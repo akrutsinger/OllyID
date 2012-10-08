@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //                                                                            //
-//                  SAMPLE BOOKMARK PLUGIN FOR OLLYDBG v2.01                  //
+//                      OLLY ID PLUGIN FOR OLLYDBG v2.01                      //
 //                                                                            //
 // This plugin allows you to scan a debugged application with the ID          //
 // database (userdb.txt). It will compare the signature of the loaded module  //
@@ -42,6 +42,8 @@
  * [*] = Changed
  * [~] = Almost there...
  *
+ * Version 0.0.4-alpha
+ * [+] Updated for OllyDbg 2.0.1g PDK
  *
  * Version 0.0.3-alpha
  * [+] Improved scan functionality
@@ -209,7 +211,7 @@ int find_signature_helper(void* signature_block, const char* signature_name,
 	uchar	hex_buf[DATALEN];			/* Buffer to store bytes converted from module in memory */
 	ulong	sig_len;					/* Length of signature text */
 	ulong	code_len;					/* Length of memory read */
-	ulong	i, j;						/* Measly index variables */
+	ulong	i;							/* Measly index variables */
 	int		ret = TRUE;					/* Default value: means function did what it's supposed to */
 
     static char prev_signature_name[SHORTNAME] = "";
