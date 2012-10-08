@@ -20,7 +20,7 @@
 #include "parser.h"
 
 #define PLUGIN_NAME		L"OllyID"			/* Unique plugin name */
-#define PLUGIN_VERS		L"0.0.3-alpha"		/* Plugin version (stable . update . patch  - status) */
+#define PLUGIN_VERS		L"0.0.4-alpha"		/* Plugin version (stable . update . patch  - status) */
 
 /* Menu items */
 #define	MENU_LOG			1
