@@ -1,0 +1,6 @@
+Build/
+*.ipch
+*.opensdf
+*.sdf
+OllyID/Intermediate
+*.aps
