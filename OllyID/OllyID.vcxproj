@@ -50,6 +50,7 @@
     <IntDir>.\Intermediate\Release\</IntDir>
     <TargetName>OllyID</TargetName>
     <GenerateManifest>false</GenerateManifest>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -82,13 +83,14 @@
       <StringPooling>
       </StringPooling>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <EnablePREfast>false</EnablePREfast>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>msvcrt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>msvcrt.lib;comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
       <AdditionalLibraryDirectories>
@@ -100,18 +102,24 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="helper.h" />
+    <ClInclude Include="string.h" />
     <ClInclude Include="OllyID.h" />
     <ClInclude Include="parser.h" />
     <ClInclude Include="plugin.h" />
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="settings.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="helper.c" />
+    <ClCompile Include="string.c" />
     <ClCompile Include="OllyID.c" />
     <ClCompile Include="parser.c" />
+    <ClCompile Include="settings.c" />
   </ItemGroup>
   <ItemGroup>
     <Library Include="ollydbg.lib" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="OllyID.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

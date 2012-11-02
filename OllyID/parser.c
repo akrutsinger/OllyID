@@ -7,61 +7,30 @@ http://code.google.com/p/inih/
 
 */
 
-#include <stdio.h>
-#include <ctype.h>
-#include <string.h>
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>		/* For plugin.h */
+//#include <stdio.h>
+//#include <ctype.h>
+//#include <string.h>
 
 #include "parser.h"
+#include "string.h"
+#include "plugin.h"		/* StrcopyA */
 
-#define MAX_LINE 4096
 #define MAX_SECTION 50
 #define MAX_NAME 50
 
-/* Strip whitespace chars off end of given string, in place. Return s. */
-static char* rstrip(char* s)
-{
-    char* p = s + strlen(s);
-    while (p > s && isspace(*--p))
-        *p = '\0';
-    return s;
-}
-
-/* Return pointer to first non-whitespace char in given string. */
-static char* lskip(const char* s)
-{
-    while (*s && isspace(*s))
-        s++;
-    return (char*)s;
-}
-
-/* Return pointer to first char c or ';' comment in given string, or pointer to
-   null at end of string if neither found. ';' must be prefixed by a whitespace
-   character to register as a comment. */
-static char* find_char_or_comment(const char* s, char c)
-{
-    int was_whitespace = 0;
-    while (*s && *s != c && !(was_whitespace && *s == ';')) {
-        was_whitespace = isspace(*s);
-        s++;
-    }
-    return (char*)s;
-}
-
-/* Version of strncpy that ensures dest (size bytes) is null-terminated. */
-static char* strncpy0(char* dest, const char* src, size_t size)
-{
-    strncpy(dest, src, size);
-    dest[size - 1] = '\0';
-    return dest;
-}
-
 /* See documentation in header file. */
-int database_parse_file(FILE* file,
+int parse_database_file(FILE* file,
                    int (*handler)(void*, const char*, const char*, const char*),
                    void* user)
 {
     /* Uses a fair bit of stack (use heap instead if you need to) */
-    char line[MAX_LINE];
+#if USE_STACK
+    char line[MAX_LINE_LEN];
+#else
+    char* line;
+#endif
     char section[MAX_SECTION] = "";
     char prev_name[MAX_NAME] = "";
 
@@ -73,8 +42,15 @@ int database_parse_file(FILE* file,
     int error = 0;
 	int ret = 0;
 
+#if !USE_STACK
+	line = (char*)malloc(MAX_LINE_LEN);
+	if (!line) {
+		return -2;
+	}
+#endif
+
     /* Scan through file line by line */
-    while (fgets(line, sizeof(line), file) != NULL) {
+    while (fgets(line, MAX_LINE_LEN, file) != NULL) {
         lineno++;
 
         start = line;
@@ -90,12 +66,16 @@ int database_parse_file(FILE* file,
         if (*start == ';' || *start == '#') {
             /* Per Python ConfigParser, allow '#' comments at start of line */
         }
-#if INI_ALLOW_MULTILINE
+#if ALLOW_MULTILINE
         else if (*prev_name && *start && start > line) {
             /* Non-black line with leading whitespace, treat as continuation
                of previous name's value (as per Python ConfigParser). */
-            if (handler(user, section, prev_name, start) == 0 && error == 0)
-                error = lineno;
+//			if (handler(user, section, prev_name, start) == 0 && !error)
+//				error = lineno;
+
+
+
+
         }
 #endif
         else if (*start == '[') {
@@ -103,10 +83,10 @@ int database_parse_file(FILE* file,
             end = find_char_or_comment(start + 1, ']');
             if (*end == ']') {
                 *end = '\0';
-                strncpy0(section, start + 1, sizeof(section));
+				StrcopyA(section, sizeof(section), start + 1);
                 *prev_name = '\0';
             }
-            else if (error == 0) {
+            else if (!error) {
                 /* No ']' found on section line */
                 error = lineno;
             }
@@ -127,26 +107,33 @@ int database_parse_file(FILE* file,
                 rstrip(value);
 
                 /* Valid name[=:]value pair found, call handler */
-                strncpy0(prev_name, name, sizeof(prev_name));
+				StrcopyA(prev_name, sizeof(prev_name), name);
 				ret = handler(user, section, name, value);
-                if(ret == SIG_FOUND){
+                if (ret == SIG_FOUND) {
 					error = SIG_FOUND;
 					break;
-				}else if(!ret && !error)
+				} else if (ret == SIG_NO_MATCH) {
+					error = SIG_NO_MATCH;
+				} else if (ret > 0 && !error) {
                     error = lineno;
+				}
             }
-            else if (!error) {
+            else if (error == 0) {
                 /* No '=' or ':' found on name[=:]value line */
                 error = lineno;
             }
         }
     }
 
+#if !USE_STACK
+	free(line);
+#endif
+
     return error;
 }
 
 /* See documentation in header file. */
-int database_parse(const char* filename,
+int parse_database(const char* filename,
               int (*handler)(void*, const char*, const char*, const char*),
               void* user)
 {
@@ -156,7 +143,7 @@ int database_parse(const char* filename,
 	file = fopen(filename, "r");
 	if (!file)
 		return -1;
-	ret = database_parse_file(file, handler, user);
+	ret = parse_database_file(file, handler, user);
 	fclose(file);
 	return ret;
 }
