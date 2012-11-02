@@ -41,6 +41,12 @@ INT_PTR CALLBACK settings_dialog_procedure(HWND hDlg, UINT uMsg, WPARAM wParam, 
 				return TRUE;
 			}
 
+			case IDC_BROWSE:
+			{
+				Browsefilename(L"OllyID - Open database", database_path, L"*.txt", (wchar_t*)plugindir, L"txt", hwollymain, BRO_FILE);
+				SetDlgItemText(hDlg, IDC_DATABASE_PATH, (LPCWSTR)database_path);
+				return TRUE;
+			}
 		}
 		return TRUE;
 	}
