@@ -18,6 +18,11 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
+#pragma once
+
+#ifndef _OLLYDBG2_PLUGIN_H_
+#define _OLLYDBG2_PLUGIN_H_
+
 #define PLUGIN_VERSION 0x02010000      // Version 2.01.0000 of plugin interface
 
 
@@ -4335,3 +4340,4 @@ pentry (void)    ODBG2_Pluginreset(void);
 pentry (int)     ODBG2_Pluginclose(void);
 pentry (void)    ODBG2_Plugindestroy(void);
 
+#endif /* _OLLYDBG2_PLUGIN_H_ */

@@ -7,8 +7,8 @@ http://code.google.com/p/inih/
 
 */
 
-#ifndef __INI_H__
-#define __INI_H__
+#ifndef _OLLYID_PARSER_H_
+#define _OLLYID_PARSER_H_
 
 /* Make this header file easier to include in C++ code */
 #ifdef __cplusplus
@@ -16,8 +16,8 @@ extern "C" {
 #endif
 
 /* Signature Comparison */
-#define SIG_FOUND	-2
-#define SIG_NOTHING	-3
+#define SIG_FOUND		-2
+#define SIG_NO_MATCH	-3
 
 #include <stdio.h>
 
@@ -33,14 +33,14 @@ extern "C" {
    Returns 0 on success, line number of first error on parse error (doesn't
    stop on first error), or -1 on file open error.
 */
-int database_parse(const char* filename,
+int parse_database(const char* filename,
               int (*handler)(void* user, const char* section,
                              const char* name, const char* value),
               void* user);
 
 /* Same as database_parse(), but takes a FILE* instead of filename. This doesn't
    close the file when it's finished -- the caller must do that. */
-int database_parse_file(FILE* file,
+int parse_database_file(FILE* file,
                    int (*handler)(void* user, const char* section,
                                   const char* name, const char* value),
                    void* user);
@@ -49,7 +49,7 @@ int database_parse_file(FILE* file,
    ConfigParser. If allowed, database_parse() will call the handler with the same
    name for each subsequent line parsed. */
 #ifndef ALLOW_MULTILINE
-#define ALLOW_MULTILINE 1
+#define ALLOW_MULTILINE 0
 #endif
 
 /* Nonzero to allow a UTF-8 BOM sequence (0xEF 0xBB 0xBF) at the start of
@@ -58,8 +58,18 @@ int database_parse_file(FILE* file,
 #define ALLOW_BOM 1
 #endif
 
+/* Nonzero to use stack, zero to use heap (malloc/free). */
+#ifndef USE_STACK
+#define USE_STACK 1
+#endif
+
+/* Maximum line length for any line in INI file. */
+#ifndef MAX_LINE_LEN
+#define MAX_LINE_LEN 4096
+#endif
+
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* __INI_H__ */
+#endif /* _OLLYID_PARSER_H_ */

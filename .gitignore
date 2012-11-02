@@ -1,6 +1,10 @@
+OllyID/Intermediate/
 Build/
 *.ipch
 *.opensdf
 *.sdf
-OllyID/Intermediate
 *.aps
+*.aps
+*.sdf
+*.opensdf
+*.ipch
