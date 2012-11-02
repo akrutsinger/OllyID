@@ -9,13 +9,11 @@ http://code.google.com/p/inih/
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>		/* For plugin.h */
-//#include <stdio.h>
-//#include <ctype.h>
-//#include <string.h>
+#include <stdio.h>			/* FILE* declaration */
 
 #include "parser.h"
 #include "string.h"
-#include "plugin.h"		/* StrcopyA */
+#include "plugin.h"			/* StrcopyA */
 
 #define MAX_SECTION 50
 #define MAX_NAME 50
