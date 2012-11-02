@@ -42,6 +42,11 @@
  * [*] = Changed
  * [~] = Almost there...
  *
+ * Version 0.1.1 (02NOV2012)
+ * [+] Implemented Scan on analysis
+ * [+] Added notification to log window for scanning
+ * [*] Fix bug where settings were not always updated in memory
+ *
  * Version 0.1.0 (01NOV2012)
  * [+] Scan entire module or only from EP
  * [+] Settings Dialog
@@ -75,12 +80,12 @@
  * [!] Standardize naming conventions
  *
  * For v0.2.0:
- * [ ] Option: Scan On Analyse
+ * [!] Option: Scan On Analyse
  * [ ] Option: Scan On Module Load
  * [ ] Fix the way the parser handles double brackets. Id est [[MSLRH]] displays as [[MSLRH
  * [ ] Unhide "Create Signature" menu - oh, and implement it
- * [ ] parsing userdb.txt not fully working...wtf?
  * [ ] Add "Browse" button for database
+ * [ ] Enable drag-n-drop for database into Settings
  * [ ] Implement string routines in code instead of stdlib.h (i.e. strlen, strcpy, etc)
  *
  * For v0.3.0:
@@ -237,7 +242,7 @@ int find_signature_helper(void* signature_block, const char* signature_name,
 
     if (strcmp(signature_name, prev_signature_name) != 0) {
 		p_signature->name = _strdup(signature_name);
-        strncpy(prev_signature_name, signature_name, sizeof(prev_signature_name));
+		StrcopyA(prev_signature_name, sizeof(prev_signature_name), signature_name);
         prev_signature_name[sizeof(prev_signature_name) - 1] = '\0';	/* Ensure NULL termination */
     }
 
@@ -277,7 +282,7 @@ int find_signature_helper(void* signature_block, const char* signature_name,
 					break;		/* Exit for loop because we don't have a match */
 				}
 			}
-		} else if ((p_signature->ep_signature == FALSE) && (scan_ep_only == FALSE)) {
+		} else if ((p_signature->ep_signature == FALSE) && (scan_ep_only == 0)) {
 			/*Start scanning from beginning of module */
 
 			/*
@@ -341,6 +346,12 @@ int scan_module(void)
 		/* Convert UNICODE filename to char so we can open the file */
 		Unicodetoascii(database_path, MAXPATH, ascii_filename, MAXPATH);
 		
+		if (scan_ep_only == 1) {
+			Addtolist(0, DRAW_HILITE, L"[*] Scanning EP only");
+		} else {
+			Addtolist(0, DRAW_HILITE, L"[*] Scanning entire file");
+		}
+
 		/* Initiate the parsing! */
 		ret = parse_database(ascii_filename, find_signature_helper, &sig_data);
 	
@@ -348,12 +359,14 @@ int scan_module(void)
 			Asciitounicode(sig_data.name , DATALEN, signature_name, DATALEN);
 			Addtolist(0, DRAW_HILITE, L"[+] %s", signature_name);
 			MessageBox(hwollymain, signature_name, L"OllyID", MB_OK | MB_ICONINFORMATION);
+			ret = 0;
 		} else if (ret == SIG_NO_MATCH) {
 			Addtolist(0, DRAW_HILITE, L"[!] Nothing Found");
-			return SIG_NO_MATCH;
+			MessageBox(hwollymain, L"Nothing found", L"OllyID", MB_OK | MB_ICONINFORMATION);
+			ret = 1;
 		} else if (ret == -1) {
         	Addtolist(0, DRAW_HILITE, L"[!] Could not open signature database: %s", database_path);
-			return 2;
+			ret = 2;
 		} else {//if (ret > 0) {
 			Addtolist(0, DRAW_HILITE, L"[!] Bad config file. First error on line %d", ret);
 			return 3;
@@ -368,7 +381,7 @@ int scan_module(void)
 	if (signature_file != NULL)
 		fclose(signature_file);
 
-	return TRUE;
+	return ret;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -417,7 +430,7 @@ extc int __cdecl ODBG2_Plugininit(void)
 	 * Get initialization data
 	 */
 
-	read_settings_from_ini(NULL);
+	load_settings(NULL);
 
 	Addtolist(0, DRAW_NORMAL, L"");
 	Addtolist(0, DRAW_NORMAL, L"[*] %s - v%s", PLUGIN_NAME, PLUGIN_VERS);
@@ -431,10 +444,10 @@ extc int __cdecl ODBG2_Plugininit(void)
 // Function is called when user opens new or restarts current application.
 // Plugin should reset internal variables and data structures to the initial
 // state.
-extc void __cdecl ODBG2_Pluginreset(void)
-{
-	/* Possibly scan module here? */
-};
+//extc void __cdecl ODBG2_Pluginreset(void)
+//{
+//	/* Possibly scan module here? */
+//};
 
 // OllyDbg calls this optional function when user wants to terminate OllyDbg.
 // All MDI windows created by plugins still exist. Function must return 0 if
@@ -480,10 +493,12 @@ extc void __cdecl ODBG2_Pluginreset(void)
 // is paused for the time of processing. Bookmark plugin, of course, does not
 // analyse code. If you don't need this feature, remove ODBG2_Pluginanalyse()
 // from the plugin code.
-//extc void __cdecl ODBG2_Pluginanalyse(t_module *pmod)
-//{
-//	ScanFile();
-//};
+extc void __cdecl ODBG2_Pluginanalyse(t_module *pmod)
+{
+	if (scan_on_analysis == 1) {
+		scan_module();
+	}
+};
 
 // Optional entry, notifies plugin on relatively infrequent events.
 //extc void __cdecl ODBG2_Pluginnotify(int code, void *data, ulong parm1, ulong parm2)

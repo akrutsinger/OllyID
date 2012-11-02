@@ -19,8 +19,6 @@ extern "C" {
 #define SIG_FOUND		-2
 #define SIG_NO_MATCH	-3
 
-#include <stdio.h>
-
 /* Parse given INI-style file. May have [section]s, name=value pairs
    (whitespace stripped), and comments starting with ';' (semicolon). Section
    is "" if name=value pair parsed before any section heading. name:value

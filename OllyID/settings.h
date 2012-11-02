@@ -9,7 +9,7 @@ int scan_ep_only;
 
 /* Prototypes */
 INT_PTR CALLBACK settings_dialog_procedure(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
-void write_settings_to_ini(HWND hDlg);
-void read_settings_from_ini(HWND hDlg);
+void save_settings(HWND hDlg);
+void load_settings(HWND hDlg);
 
 #endif	/*_OLLYID_SETTINGS_INCLUDED_ */

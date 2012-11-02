@@ -4,7 +4,5 @@ Build/
 *.opensdf
 *.sdf
 *.aps
-*.aps
 *.sdf
-*.opensdf
-*.ipch
+*.suo

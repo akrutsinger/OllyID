@@ -1,6 +1,8 @@
 #define WIN32_LEAN_AND_MEAN
 
 #include <Windows.h>
+#include <ShellAPI.h>
+
 #include "plugin.h"
 #include "OllyID.h"
 #include "settings.h"
@@ -26,7 +28,7 @@ INT_PTR CALLBACK settings_dialog_procedure(HWND hDlg, UINT uMsg, WPARAM wParam, 
 				 * Save the settings
 				 */
 
-				write_settings_to_ini(hDlg);
+				save_settings(hDlg);
 
 				EndDialog(hDlg, 0);
 				return TRUE;
@@ -39,6 +41,12 @@ INT_PTR CALLBACK settings_dialog_procedure(HWND hDlg, UINT uMsg, WPARAM wParam, 
 				return TRUE;
 			}
 
+			case IDC_BROWSE:
+			{
+				Browsefilename(L"OllyID - Open database", database_path, L"*.txt", (wchar_t*)plugindir, L"txt", hwollymain, BRO_FILE);
+				SetDlgItemText(hDlg, IDC_DATABASE_PATH, (LPCWSTR)database_path);
+				return TRUE;
+			}
 		}
 		return TRUE;
 	}
@@ -55,8 +63,7 @@ INT_PTR CALLBACK settings_dialog_procedure(HWND hDlg, UINT uMsg, WPARAM wParam, 
 		 * setting already in the ollydbg.ini, set the default
 		 * values so we can save them if we want
 		 */
-
-		read_settings_from_ini(hDlg);
+		load_settings(hDlg);
 
 		SetFocus(GetDlgItem(hDlg, IDC_CANCEL));
 		return TRUE;
@@ -66,36 +73,39 @@ INT_PTR CALLBACK settings_dialog_procedure(HWND hDlg, UINT uMsg, WPARAM wParam, 
 	return FALSE; 
 }
 
-void write_settings_to_ini(HWND hDlg)
+void save_settings(HWND hDlg)
 {
 	/* Database Path */
 	GetDlgItemText(hDlg, IDC_DATABASE_PATH, database_path, MAXPATH);
 	Writetoini(NULL, PLUGIN_NAME, L"Database path", database_path);
 
 	/* Scan on Analysis */
+	scan_on_analysis = SendMessage(GetDlgItem(hDlg, IDC_SCAN_ON_ANALYSIS), BM_GETCHECK, 0, 0);
 	Writetoini(NULL,
 				PLUGIN_NAME,
 				L"Scan on analysis", L"%i",
 				/* Writes 1 if checked, 0 if unchecked */
-				SendMessage(GetDlgItem(hDlg, IDC_SCAN_ON_ANALYSIS), BM_GETCHECK, 0, 0));
+				scan_on_analysis);
 
 	/* Scan on Module Load */
+	scan_on_mod_load = SendMessage(GetDlgItem(hDlg, IDC_SCAN_ON_MODULE_LOAD), BM_GETCHECK, 0, 0);
 	Writetoini(NULL,
 				PLUGIN_NAME,
 				L"Scan on module load", L"%i",
 				/* Writes 1 if checked, 0 if unchecked */
-				SendMessage(GetDlgItem(hDlg, IDC_SCAN_ON_MODULE_LOAD), BM_GETCHECK, 0, 0));
+				scan_on_mod_load);
 
 	/* Scan EP only */
+	scan_ep_only = SendMessage(GetDlgItem(hDlg, IDC_SCAN_EP_ONLY), BM_GETCHECK, 0, 0);
 	Writetoini(NULL,
 				PLUGIN_NAME,
 				L"Scan EP only", L"%i",
 				/* Writes 1 if checked, 0 if unchecked */
-				SendMessage(GetDlgItem(hDlg, IDC_SCAN_EP_ONLY), BM_GETCHECK, 0, 0));
+				scan_ep_only);
 }
 
 
-void read_settings_from_ini(HWND hDlg)
+void load_settings(HWND hDlg)
 {
 	/* Local variables */
 	int ret;
