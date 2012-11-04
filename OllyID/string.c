@@ -1,3 +1,13 @@
+/*******************************************************************************
+ * OllyID - string.c
+ *
+ * Copyright (c) 2012, Austyn Krutsinger
+ * All rights reserved.
+ *
+ * OllyID is released under the New BSD license (see LICENSE.txt).
+ *
+ ******************************************************************************/
+
 #define WIN32_LEAN_AND_MEAN
 
 #include <Windows.h>
@@ -8,6 +18,34 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////// HELPER FUNCTIONS ////////////////////////////////
+
+/**
+ * strnicmp - Case insensitive, length-limited string comparison
+ * @s1: One string
+ * @s2: The other string
+ * @len: the maximum number of characters to compare
+ */
+extern int strncmp2(const char *s1, const char *s2, size_t len)
+{
+	unsigned char c1, c2;
+
+	if (!len)
+		return 0;
+
+	do {
+		c1 = *s1++;
+		c2 = *s2++;
+		if (!c1 || !c2)
+			break;
+		if (c1 == c2)
+			continue;
+		c1 = tolower(c1);
+		c2 = tolower(c2);
+		if (c1 != c2)
+			break;
+	} while (--len);
+	return (int)c1 - (int)c2;
+}
 
 extern void remove_char(char *s, char c)
 {

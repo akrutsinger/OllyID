@@ -1,3 +1,13 @@
+/*******************************************************************************
+ * OllyID - settings.c 
+ *
+ * Copyright (c) 2012, Austyn Krutsinger
+ * All rights reserved.
+ *
+ * OllyID is released under the New BSD license (see LICENSE.txt).
+ *
+ ******************************************************************************/
+
 #define WIN32_LEAN_AND_MEAN
 
 #include <Windows.h>
@@ -8,7 +18,7 @@
 #include "settings.h"
 #include "resource.h"
 
-/* Globals Definitions */
+/* Globals Definitions - Program specific */
 extern wchar_t database_path[MAX_PATH];
 extern int scan_on_analysis;
 extern int scan_on_mod_load;
@@ -16,58 +26,37 @@ extern int scan_ep_only;
 
 INT_PTR CALLBACK settings_dialog_procedure(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	switch (uMsg) 
-	{ 
+	switch (uMsg) { 
 	case WM_COMMAND:
-	{
-		switch (LOWORD(wParam)) 
-		{
+		switch (LOWORD(wParam)) {
 			case IDC_OK:
-			{
 				/*
 				 * Save the settings
 				 */
-
 				save_settings(hDlg);
-
 				EndDialog(hDlg, 0);
 				return TRUE;
-			}
-
 			case IDC_CANCEL:
-			{
 				/* End dialog without saving anything */
 				EndDialog(hDlg, 0);
 				return TRUE;
-			}
-
 			case IDC_BROWSE:
-			{
 				Browsefilename(L"OllyID - Open database", database_path, L"*.txt", (wchar_t*)plugindir, L"txt", hwollymain, BRO_FILE);
 				SetDlgItemText(hDlg, IDC_DATABASE_PATH, (LPCWSTR)database_path);
 				return TRUE;
-			}
 		}
 		return TRUE;
-	}
-
 	case WM_CLOSE:
-	{
 		EndDialog(hDlg, 0);
 		return TRUE;
-	}
-
 	case WM_INITDIALOG:
-	{
 		/* Load settings from ollydbg.ini. If there is no
 		 * setting already in the ollydbg.ini, set the default
 		 * values so we can save them if we want
 		 */
 		load_settings(hDlg);
-
 		SetFocus(GetDlgItem(hDlg, IDC_CANCEL));
 		return TRUE;
-	}
 
 	}
 	return FALSE; 

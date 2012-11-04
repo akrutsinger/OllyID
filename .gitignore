@@ -1,8 +1,11 @@
 OllyID/Intermediate/
 Build/
+ipch/
 *.ipch
 *.opensdf
 *.sdf
 *.aps
 *.sdf
 *.suo
+*.filters
+*.user

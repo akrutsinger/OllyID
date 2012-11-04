@@ -1,3 +1,13 @@
+/*******************************************************************************
+ * OllyID - string.h
+ *
+ * Copyright (c) 2012, Austyn Krutsinger
+ * All rights reserved.
+ *
+ * OllyID is released under the New BSD license (see LICENSE.txt).
+ *
+ ******************************************************************************/
+
 #include <stdio.h>
 
 #ifndef _OLLYID_HELPER_H_

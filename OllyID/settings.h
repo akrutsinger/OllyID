@@ -1,3 +1,13 @@
+/*******************************************************************************
+ * OllyID - settings.h
+ *
+ * Copyright (c) 2012, Austyn Krutsinger
+ * All rights reserved.
+ *
+ * OllyID is released under the New BSD license (see LICENSE.txt).
+ *
+ ******************************************************************************/
+
 #ifndef _OLLYID_SETTINGS_H_
 #define _OLLYID_SETTINGS_H_
 

@@ -1,29 +1,17 @@
-////////////////////////////////////////////////////////////////////////////////
-//                                                                            //
-//                      OLLY ID PLUGIN FOR OLLYDBG v2.01                      //
-//                                                                            //
-// This plugin allows you to scan a debugged application with the ID          //
-// database (userdb.txt). It will compare the signature of the loaded module  //
-// and print the results of the scan for you to quickly identify the PE you   //
-// are debugging.                                                             //
-//                                                                            //
-// This code is distributed "as is", without warranty of any kind, expressed  //
-// or implied, including, but not limited to warranty of fitness for any      //
-// particular purpose. In no event will Austyn Krutsiinger be liable to you   //
-// for any special, incidental, indirect, consequential or any other damages  //
-// caused by the use, misuse, or the inability to use of this code, including //
-// any lost profits or lost savings, even if Oleh Yuschuk has been advised of //
-// the possibility of such damages. Or, translated into English: use at your  //
-// own risk!                                                                  //
-//                                                                            //
-// This code is free. You can modify it, include parts of it into your own    //
-// programs and redistribute modified code provided that you remove all       //
-// copyright messages or substitute them with your own copyright.             //
-//                                                                            //
-////////////////////////////////////////////////////////////////////////////////
+/*******************************************************************************
+ * OllyID - OllyID.c
+ *
+ * Copyright (c) 2012, Austyn Krutsinger
+ * All rights reserved.
+ *
+ * OllyID is released under the New BSD license (see LICENSE.txt).
+ *
+ ******************************************************************************/
 
-// VERY IMPORTANT NOTICE: PLUGINS ARE UNICODE LIBRARIES! COMPILE THEM WITH BYTE
-// ALIGNMENT OF STRUCTURES AND DEFAULT UNSIGNED CHAR!
+/*
+ * VERY IMPORTANT NOTICE: PLUGINS ARE UNICODE LIBRARIES! COMPILE THEM WITH BYTE
+ * ALIGNMENT OF STRUCTURES AND DEFAULT UNSIGNED CHAR!
+ */
 
 /*******************************************************************************
  *	WARNING!!!!
@@ -166,41 +154,28 @@ int menu_handler(t_table* pTable, wchar_t* pName, ulong index, int nMode)
     UNREFERENCED_PARAMETER(pTable);
     UNREFERENCED_PARAMETER(pName);
 
-    switch (nMode)
-    {
+    switch (nMode) {
     case MENU_VERIFY:
         return MENU_NORMAL;
 
     case MENU_EXECUTE:
-        {
-            switch (index)
-            {
-            case MENU_SETTINGS: // Menu -> Settings
-				{
-
-					HINSTANCE hSettingsInstance = (HINSTANCE)GetModuleHandle(L"OllyID.dll");
-					DialogBox(hSettingsInstance,
-							  MAKEINTRESOURCE(IDD_SETTINGS),
-							  hwollymain,
-							  (DLGPROC)settings_dialog_procedure);
-				break;
-				}
-            case MENU_SCAN_MODULE: // Disasm Menu -> Scan Module
-				{
-					scan_module();
-					break;
-				}
-            case MENU_CREATE_SIG: // Disasm Menu -> Create Signature
-				{
-					break;
-				}
-            case MENU_ABOUT: // Menu -> About
-                {
-					display_about_message();
-                }
-            }
-            return MENU_NOREDRAW;
+        switch (index) {
+        case MENU_SETTINGS: // Menu -> Settings
+			DialogBox(plugin_instance,
+						MAKEINTRESOURCE(IDD_SETTINGS),
+						hwollymain,
+						(DLGPROC)settings_dialog_procedure);
+			break;
+        case MENU_SCAN_MODULE: // Disasm Menu -> Scan Module
+			scan_module();
+			break;
+        case MENU_CREATE_SIG: // Disasm Menu -> Create Signature
+			break;
+        case MENU_ABOUT: // Menu -> About
+			display_about_message();
+			break;
         }
+        return MENU_NOREDRAW;
     }
 
     return MENU_ABSENT;
@@ -236,8 +211,8 @@ int find_signature_helper(void* signature_block, const char* signature_name,
 	int		ret = 0;				/* Little 'ol return value */
 
     static char prev_signature_name[SHORTNAME] = "";
-    static t_signature_block *p_signature;
-	p_signature = (t_signature_block *)signature_block;
+    static struct t_signature_block *p_signature;
+	p_signature = (struct t_signature_block *)signature_block;
 
 
     if (strcmp(signature_name, prev_signature_name) != 0) {
@@ -334,7 +309,7 @@ int scan_module(void)
 	BOOL	sigs_match = TRUE;			// Flag FALSE if signatures don't match
 	int		ret;						// Return values for certain functions
 
-    t_signature_block sig_data;
+    struct t_signature_block sig_data;
 
 	Resumeallthreads();
 

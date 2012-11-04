@@ -1,11 +1,15 @@
-/* inih -- simple .INI file parser
-
-inih is released under the New BSD license (see LICENSE.txt). Go to the project
-home page for more info:
-
-http://code.google.com/p/inih/
-
-*/
+/*******************************************************************************
+ * Based off of inih -- simple .INI file parser
+ *
+ * Copyright (c) 2009, Brush Technology
+ * All rights reserved.
+ *
+ * inih is released under the New BSD license (see LICENSE.txt). Go to the project
+ * home page for more info:
+ *
+ * http://code.google.com/p/inih/
+ *
+ ******************************************************************************/
 
 #ifndef _OLLYID_PARSER_H_
 #define _OLLYID_PARSER_H_
