@@ -46,7 +46,17 @@ INT_PTR CALLBACK settings_dialog_procedure(HWND hDlg, UINT uMsg, WPARAM wParam, 
 				return TRUE;
 		}
 		return TRUE;
+	case WM_DROPFILES:
+	{
+		HDROP hdrop = (HDROP)wParam;
+		DragQueryFile(hdrop, 0, database_path, sizeof(database_path));
+		DragFinish(hdrop);
+		SetDlgItemText(hDlg, IDC_DATABASE_PATH, (LPCWSTR)database_path);
+		SetFocus(GetDlgItem(hDlg, IDC_DATABASE_PATH));
+		return TRUE;
+	}
 	case WM_CLOSE:
+		DragAcceptFiles(hDlg, FALSE);
 		EndDialog(hDlg, 0);
 		return TRUE;
 	case WM_INITDIALOG:
@@ -54,6 +64,7 @@ INT_PTR CALLBACK settings_dialog_procedure(HWND hDlg, UINT uMsg, WPARAM wParam, 
 		 * setting already in the ollydbg.ini, set the default
 		 * values so we can save them if we want
 		 */
+		DragAcceptFiles(hDlg, TRUE);
 		load_settings(hDlg);
 		SetFocus(GetDlgItem(hDlg, IDC_CANCEL));
 		return TRUE;
