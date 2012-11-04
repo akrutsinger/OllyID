@@ -30,6 +30,10 @@
  * [*] = Changed
  * [~] = Almost there...
  *
+ * Version 0.2.0 (04NOV2012)
+ * [+] Add "Browse" button for database
+ * [+] Enable drag-n-drop for database into Settings
+ *
  * Version 0.1.1 (02NOV2012)
  * [+] Implemented Scan on analysis
  * [+] Added notification to log window for scanning
@@ -59,21 +63,10 @@
  * -----------------------------------------------------------------------------
  * TODO
  * -----------------------------------------------------------------------------
- * For v0.1.0:
- * [!] Currently only scans from EP only. Add ability to scan entire module
- * [!] Better analysis on signature database in case formatting is a little off
- * [!] Add Settings Dialog
- * [!] Assumes ep_only = true. Automatically determine from Settings menu
- * [!] Not properly loading database path
- * [!] Standardize naming conventions
- *
  * For v0.2.0:
- * [!] Option: Scan On Analyse
  * [ ] Option: Scan On Module Load
  * [ ] Fix the way the parser handles double brackets. Id est [[MSLRH]] displays as [[MSLRH
  * [ ] Unhide "Create Signature" menu - oh, and implement it
- * [ ] Add "Browse" button for database
- * [ ] Enable drag-n-drop for database into Settings
  * [ ] Implement string routines in code instead of stdlib.h (i.e. strlen, strcpy, etc)
  *
  * For v0.3.0:
