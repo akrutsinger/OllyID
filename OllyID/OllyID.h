@@ -38,11 +38,11 @@ int find_signature_helper(void* signature_block, const char* signature_name, con
 static HINSTANCE plugin_instance;				/* Instance of plugin DLL */
 t_module		*main_module;					/* Pointer to main module struct */
 
-struct t_signature_block {
+struct t_signature_data {
     char	*name;
     char	*data;
     int		ep_signature;
-} t_signature_block;
+} t_signature_data;
 
 /*
  * Plugin menu that will appear in the main OllyDbg menu

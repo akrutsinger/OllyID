@@ -35,7 +35,7 @@ extern "C" {
    Returns 0 on success, line number of first error on parse error (doesn't
    stop on first error), or -1 on file open error.
 */
-int parse_database(const char* filename,
+int parse_database(const wchar_t* filename,
               int (*handler)(void* user, const char* section,
                              const char* name, const char* value),
               void* user);

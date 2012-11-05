@@ -25,7 +25,7 @@
 /* See documentation in header file. */
 int parse_database_file(FILE* file,
                    int (*handler)(void*, const char*, const char*, const char*),
-                   void* user)
+                   void* signature_data)
 {
     /* Uses a fair bit of stack (use heap instead if you need to) */
 #if USE_STACK
@@ -110,7 +110,7 @@ int parse_database_file(FILE* file,
 
                 /* Valid name[=:]value pair found, call handler */
 				StrcopyA(prev_name, sizeof(prev_name), name);
-				ret = handler(user, section, name, value);
+				ret = handler(signature_data, section, name, value);
                 if (ret == SIG_FOUND) {
 					error = SIG_FOUND;
 					break;
@@ -135,17 +135,17 @@ int parse_database_file(FILE* file,
 }
 
 /* See documentation in header file. */
-int parse_database(const char* filename,
+int parse_database(const wchar_t* filename,
               int (*handler)(void*, const char*, const char*, const char*),
-              void* user)
+              void* signature_data)
 {
 	FILE* file;
 	int ret;
 
-	file = fopen(filename, "r");
+	file = _wfopen(filename, L"r");
 	if (!file)
 		return -1;
-	ret = parse_database_file(file, handler, user);
+	ret = parse_database_file(file, handler, signature_data);
 	fclose(file);
 	return ret;
 }

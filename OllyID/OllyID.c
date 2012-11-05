@@ -33,6 +33,7 @@
  * Version 0.2.0 (04NOV2012)
  * [+] Add "Browse" button for database
  * [+] Enable drag-n-drop for database into Settings
+ * [+] Minor code optimization
  *
  * Version 0.1.1 (02NOV2012)
  * [+] Implemented Scan on analysis
@@ -193,7 +194,7 @@ extc t_menu * __cdecl ODBG2_Pluginmenu(wchar_t *type)
 ////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////// FILE ROUTINES ////////////////////////////////////
 
-int find_signature_helper(void* signature_block, const char* signature_name,
+int find_signature_helper(void* signature_data, const char* signature_name,
 							const char* name, const char* value)
 {
 	uchar	code_buf[DATALEN];		/* Stores memory bytes from main module */
@@ -204,8 +205,8 @@ int find_signature_helper(void* signature_block, const char* signature_name,
 	int		ret = 0;				/* Little 'ol return value */
 
     static char prev_signature_name[SHORTNAME] = "";
-    static struct t_signature_block *p_signature;
-	p_signature = (struct t_signature_block *)signature_block;
+    static struct t_signature_data *p_signature;
+	p_signature = (struct t_signature_data *)signature_data;
 
 
     if (strcmp(signature_name, prev_signature_name) != 0) {
@@ -298,11 +299,10 @@ int scan_module(void)
 {
 	FILE	*signature_file = NULL;		// Pointer to database file
 	wchar_t	signature_name[TEXTLEN];	// Name of signature from database file
-	char	ascii_filename[MAXPATH];	// ASCII text from the file before conversion
 	BOOL	sigs_match = TRUE;			// Flag FALSE if signatures don't match
 	int		ret;						// Return values for certain functions
 
-    struct t_signature_block sig_data;
+    struct t_signature_data sig_data;
 
 	Resumeallthreads();
 
@@ -311,9 +311,6 @@ int scan_module(void)
 
 	/* Make sure there is actually a module loaded into Olly */
 	if (main_module != NULL) {
-		/* Convert UNICODE filename to char so we can open the file */
-		Unicodetoascii(database_path, MAXPATH, ascii_filename, MAXPATH);
-		
 		if (scan_ep_only == 1) {
 			Addtolist(0, DRAW_HILITE, L"[*] Scanning EP only");
 		} else {
@@ -321,7 +318,7 @@ int scan_module(void)
 		}
 
 		/* Initiate the parsing! */
-		ret = parse_database(ascii_filename, find_signature_helper, &sig_data);
+		ret = parse_database(database_path, find_signature_helper, &sig_data);
 	
 		if (ret == SIG_FOUND) {
 			Asciitounicode(sig_data.name , DATALEN, signature_name, DATALEN);
