@@ -33,7 +33,7 @@
  * Version 0.2.0 (04NOV2012)
  * [+] Add "Browse" button for database
  * [+] Enable drag-n-drop for database into Settings
- * [+] Minor code optimization
+ * [+] Major code optimization: about 1000% increase (literally) in non ep_only scanning (whoops!)
  *
  * Version 0.1.1 (02NOV2012)
  * [+] Implemented Scan on analysis
@@ -64,13 +64,11 @@
  * -----------------------------------------------------------------------------
  * TODO
  * -----------------------------------------------------------------------------
- * For v0.2.0:
+ *
  * [ ] Option: Scan On Module Load
  * [ ] Fix the way the parser handles double brackets. Id est [[MSLRH]] displays as [[MSLRH
  * [ ] Unhide "Create Signature" menu - oh, and implement it
  * [ ] Implement string routines in code instead of stdlib.h (i.e. strlen, strcpy, etc)
- *
- * For v0.3.0:
  * [ ] Scan any module currently in CPU instead of just main module
  * [ ] Improve error checking for most everything
  * [ ] Restructure project files layout and build locations et cetera
@@ -87,6 +85,7 @@
 #define WIN32_LEAN_AND_MEAN		// Remove extra windows.h information 
 
 #include <Windows.h>
+#include <time.h>
 
 #include "plugin.h"
 #include "OllyID.h"
@@ -260,11 +259,11 @@ int find_signature_helper(void* signature_data, const char* signature_name,
 			 * 1 until we find a match or reach 'code_len' bytes from the
 			 * end of the module
 			 */
-			for (i = 0; i < main_module->size - sig_len; i++) {
+			for (i = 0; i < main_module->codesize - sig_len; i++) {
 				/* Always assume we'll find a match, until we don't */
 				ret = SIG_FOUND;
 
-				code_len = Readmemory((uchar *)code_buf, main_module->base + i, sig_len, MM_SILENT);
+				code_len = Readmemory((uchar *)code_buf, main_module->codebase + i, sig_len, MM_SILENT);
 				/* Convert byte codes to a UNICODE string */
 				HexdumpA(hex_buf, code_buf, code_len);
 
@@ -301,6 +300,7 @@ int scan_module(void)
 	wchar_t	signature_name[TEXTLEN];	// Name of signature from database file
 	BOOL	sigs_match = TRUE;			// Flag FALSE if signatures don't match
 	int		ret;						// Return values for certain functions
+	int		start_time, end_time;
 
     struct t_signature_data sig_data;
 
@@ -317,9 +317,14 @@ int scan_module(void)
 			Addtolist(0, DRAW_HILITE, L"[*] Scanning entire file");
 		}
 
+//		start_time = clock();
+
 		/* Initiate the parsing! */
 		ret = parse_database(database_path, find_signature_helper, &sig_data);
 	
+//		end_time = clock();
+//		Addtolist(0, DRAW_HILITE, L"Total time: %ims", end_time - start_time);
+
 		if (ret == SIG_FOUND) {
 			Asciitounicode(sig_data.name , DATALEN, signature_name, DATALEN);
 			Addtolist(0, DRAW_HILITE, L"[+] %s", signature_name);

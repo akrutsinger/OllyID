@@ -12,7 +12,7 @@
 #define _OLLYID_H_
 
 #define PLUGIN_NAME		L"OllyID"		/* Unique plugin name */
-#define PLUGIN_VERS		L"0.1.0"		/* Plugin version (stable . update . patch  - status) */
+#define PLUGIN_VERS		L"0.2.0"		/* Plugin version (stable . update . patch  - status) */
 
 /* Menu items */
 #define	MENU_LOG_WINDOW		1
