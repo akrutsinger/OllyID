@@ -64,13 +64,11 @@
  * -----------------------------------------------------------------------------
  * TODO
  * -----------------------------------------------------------------------------
- * For v0.2.0:
+ *
  * [ ] Option: Scan On Module Load
  * [ ] Fix the way the parser handles double brackets. Id est [[MSLRH]] displays as [[MSLRH
  * [ ] Unhide "Create Signature" menu - oh, and implement it
  * [ ] Implement string routines in code instead of stdlib.h (i.e. strdup, strcpy, etc)
- *
- * For v0.3.0:
  * [ ] Scan any module currently in CPU instead of just main module
  * [ ] Improve error checking for most everything
  * [ ] Restructure project files layout and build locations et cetera
@@ -261,11 +259,11 @@ int find_signature_helper(void* signature_data, const char* signature_name,
 			 * 1 until we find a match or reach 'code_len' bytes from the
 			 * end of the module
 			 */
-			for (i = 0; i < main_module->size - sig_len; i++) {
+			for (i = 0; i < main_module->codesize - sig_len; i++) {
 				/* Always assume we'll find a match, until we don't */
 				ret = SIG_FOUND;
 
-				code_len = Readmemory((uchar *)code_buf, main_module->base + i, sig_len, MM_SILENT);
+				code_len = Readmemory((uchar *)code_buf, main_module->codebase + i, sig_len, MM_SILENT);
 				/* Convert byte codes to a UNICODE string */
 				HexdumpA(hex_buf, code_buf, code_len);
 

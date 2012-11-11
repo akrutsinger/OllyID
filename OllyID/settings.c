@@ -44,6 +44,10 @@ INT_PTR CALLBACK settings_dialog_procedure(HWND hDlg, UINT uMsg, WPARAM wParam, 
 				Browsefilename(L"OllyID - Open database", database_path, L"*.txt", (wchar_t*)plugindir, L"txt", hwollymain, BRO_FILE);
 				SetDlgItemText(hDlg, IDC_DATABASE_PATH, (LPCWSTR)database_path);
 				return TRUE;
+			case IDC_SCAN_EP_ONLY:
+				if (SendMessage(GetDlgItem(hDlg, IDC_SCAN_EP_ONLY), BM_GETCHECK, 0, 0) == BST_UNCHECKED) {
+					MessageBoxW(hDlg, L"Not scanning \"EP only\" signatures can be very inaccurate depending on what database you are using. It can also be very slow depending on the size of the module you are debuging. Until I get this fixed uncheck this with caution.", L"OllyID", MB_OK|MB_ICONEXCLAMATION);
+				}
 		}
 		return TRUE;
 	case WM_DROPFILES:
