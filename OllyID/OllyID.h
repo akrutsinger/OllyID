@@ -12,7 +12,9 @@
 #define _OLLYID_H_
 
 #define PLUGIN_NAME		L"OllyID"		/* Unique plugin name */
-#define PLUGIN_VERS		L"0.2.0"		/* Plugin version (stable . update . patch  - status) */
+#define PLUGIN_VERS		L"0.3.0"		/* Plugin version (stable . update . patch  - status) */
+
+#define DEVELOPMENT_MODE	0			/* Enables / Disables development code /*
 
 /* Menu items */
 #define	MENU_LOG_WINDOW		1
@@ -20,6 +22,7 @@
 #define	MENU_ABOUT			3
 #define	MENU_SCAN_MODULE	4
 #define	MENU_CREATE_SIG		5
+#define MENU_TEST_CODE		255
 
 /**
  * Forward declarations
@@ -31,12 +34,12 @@ void display_about_message(void);
 int scan_module(void);
 /* Helper functions */
 int find_signature_helper(void* signature_block, const char* signature_name, const char* name, const char* value);
+int module_mem_create(void);
 
 /**
  * Global Declarations
  */
-static HINSTANCE plugin_instance;				/* Instance of plugin DLL */
-t_module		*main_module;					/* Pointer to main module struct */
+
 
 struct t_signature_data {
     char	*name;
@@ -50,6 +53,11 @@ struct t_signature_data {
  */
 static t_menu ollyid_menu[] =
 {
+#if DEVELOPMENT_MODE
+	{ L"Test Code",
+		L"Test Code",
+		KK_DIRECT|KK_CTRL|KK_SHIFT|'T', menu_handler, NULL, MENU_TEST_CODE },
+#endif
 	{ L"Scan Module",
 		L"Scan Module",
 		KK_DIRECT|KK_CTRL|'S', menu_handler, NULL, MENU_SCAN_MODULE },
@@ -62,7 +70,7 @@ static t_menu ollyid_menu[] =
 	{ L"|About",
 		L"About OllyID",
 		K_NONE, menu_handler, NULL, MENU_ABOUT },
-	// End of menu.
+	/* End of menu. */
 	{ NULL, NULL, K_NONE, NULL, NULL, 0 }
 };
 

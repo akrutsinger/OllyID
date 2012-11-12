@@ -38,7 +38,7 @@ int parse_database_file(FILE* file,
 
     char* start;
     char* end;
-    char* name;
+    char* property_name;
     char* value;
     int lineno = 0;
     int error = 0;
@@ -101,7 +101,7 @@ int parse_database_file(FILE* file,
             }
             if (*end == '=' || *end == ':') {
                 *end = '\0';
-                name = rstrip(start);
+                property_name = rstrip(start);
                 value = lskip(end + 1);
                 end = find_char_or_comment(value, '\0');
                 if (*end == ';')
@@ -109,8 +109,8 @@ int parse_database_file(FILE* file,
                 rstrip(value);
 
                 /* Valid name[=:]value pair found, call handler */
-				StrcopyA(prev_name, sizeof(prev_name), name);
-				ret = handler(signature_data, section, name, value);
+				StrcopyA(prev_name, sizeof(prev_name), property_name);
+				ret = handler(signature_data, section, property_name, value);
                 if (ret == SIG_FOUND) {
 					error = SIG_FOUND;
 					break;
