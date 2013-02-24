@@ -15,7 +15,9 @@
 wchar_t database_path[MAX_PATH];
 int scan_on_analysis;
 int scan_on_mod_load;
-int scan_ep_only;
+int global_scan_ep_only;
+int must_read_database;
+int new_process_loaded;
 
 /* Prototypes */
 INT_PTR CALLBACK settings_dialog_procedure(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);

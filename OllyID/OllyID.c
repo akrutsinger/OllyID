@@ -14,13 +14,6 @@
  */
 
 /*******************************************************************************
- *	WARNING!!!!
- *		CURRENTLY THIS PLUGIN ASSUMES THE USERDB.TXT (SIGNATURE DATABASE) IS
- *		FORMATTED CORRECTLY, AS IT WOULD BE FOR PEiD OR ANY OTHER PROGRAM THAT
- *		USES IT. THAT IS ALL...
- ******************************************************************************/
-
-/*******************************************************************************
  * Things to change as I think of them...
  * [ ] = To do
  * [?] = Might be a good idea?
@@ -29,6 +22,14 @@
  * [-] = Removed
  * [*] = Changed
  * [~] = Almost there...
+ *
+ * Version 0.4.0 (24FEB2013) - IN DEVELOPMENT
+ * [+] Signatures are stored in link list dramatically increasing search speed
+ * [+] Added internal cstrndup function to replace _strdup
+ * [+] Added progress bar during scanning
+ * [*] Parses database file more efficiently
+ * [*] Changed strlen to use Olly's StrlenA function
+ * [*] Major code cleanup
  *
  * Version 0.3.0 (12NOV2012)
  * [*] Changed the way signatures are searched for another huge speed increase
@@ -69,9 +70,16 @@
  * TODO
  * -----------------------------------------------------------------------------
  *
+ * [ ] Option: Verbose program output
+ * [ ] Option: Message box for search result?
+ * [ ] Option: Scan On Module Load
+ * [ ] Option: Add show_scan_time option
+ * [ ] Adjust location of Suspendallthreads() and Resumeallthreads()
+ * [ ] Check for memory leaks
+ * [ ] Add menu setting for show info in Log window or MessageBox or both
+ * [ ] Store module and signature database information as uchar instead of char's
  * [ ] Scan any module currently in CPU instead of just main module
  * [ ] Add Show scan time setting
- * [ ] Option: Scan On Module Load
  * [ ] Fix the way the parser handles double brackets. Id est [[MSLRH]] displays as [[MSLRH
  * [ ] Implement "Create Signature"
  * [ ] Implement string routines in code instead of stdlib.h (i.e. strdup, strcpy, etc)
@@ -103,9 +111,11 @@
 #include "resource.h"
 
 /* Globals Definitions - Module specific */
-static HINSTANCE	plugin_instance;				/* Instance of plugin DLL */
-static t_module		*main_module;					/* Pointer to main module struct */
-static char			*module_code = NULL;				/* Global pointer for allocated module code */
+static HINSTANCE				plugin_instance = NULL;		/* Instance of plugin DLL */
+static t_module					*global_main_module = NULL;		/* Pointer to main module struct */
+static char						*global_module_code = NULL;		/* Global pointer for allocated module code */
+static struct signature_list_s	*global_signature_list = NULL;
+static dictionary				*global_dictionary = NULL;						
 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////// PLUGIN MENUS EMBEDDED INTO OLLYDBG WINDOWS //////////////////
@@ -118,10 +128,10 @@ static char			*module_code = NULL;				/* Global pointer for allocated module cod
 void display_about_message(void)
 {
 	wchar_t about_message[TEXTLEN] = { 0 };
-	int n;
 	wchar_t buf[SHORTNAME];
+	int n;
 
-    /* Debuggee should continue execution while message box is displayed. */
+	/* Debuggee should continue execution while message box is displayed. */
 	Resumeallthreads();
 	/* In this case, swprintf() would be as good as a sequence of StrcopyW(), */
 	/* but secure copy makes buffer overflow impossible. */
@@ -165,39 +175,51 @@ void display_about_message(void)
  */
 int menu_handler(t_table* pTable, wchar_t* pName, ulong index, int nMode)
 {
-    UNREFERENCED_PARAMETER(pTable);
-    UNREFERENCED_PARAMETER(pName);
+	UNREFERENCED_PARAMETER(pTable);
+	UNREFERENCED_PARAMETER(pName);
 
-    switch (nMode) {
-    case MENU_VERIFY:
-        return MENU_NORMAL;
+	switch (nMode) {
+	case MENU_VERIFY:
+		return MENU_NORMAL;
 
-    case MENU_EXECUTE:
-        switch (index) {
-        case MENU_SETTINGS: /* Menu -> Settings */
+	case MENU_EXECUTE:
+		switch (index) {
+		case MENU_SETTINGS: /* Menu -> Settings */
 			DialogBox(plugin_instance,
 						MAKEINTRESOURCE(IDD_SETTINGS),
 						hwollymain,
 						(DLGPROC)settings_dialog_procedure);
 			break;
-        case MENU_SCAN_MODULE: /* Disasm Menu -> Scan Module */
+		case MENU_SCAN_MODULE: /* Disasm Menu -> Scan Module */
 			scan_module();
 			break;
-        case MENU_CREATE_SIG: /* Disasm Menu -> Create Signature */
+		case MENU_CREATE_SIG: /* Disasm Menu -> Create Signature */
 			break;
-        case MENU_ABOUT: /* Menu -> About */
+		case MENU_ABOUT: /* Menu -> About */
 			display_about_message();
 			break;
-#if DEVELOPMENT_MODE
+#ifdef DEVELOPMENT_MODE
 		case MENU_TEST_CODE: /* Menu -> Test Code */
-
+		{
+			struct signature_list_s *s;
+			if (must_read_database == TRUE) {
+				global_dictionary = iniparser_load(database_path);
+				if (global_dictionary == NULL) {
+					Addtolist(0, DRAW_HILITE, L"[!] Could not initialize database");
+				} else {
+					Addtolist(0, DRAW_NORMAL, L"[*] Total signatures: %i", iniparser_getnsec(global_dictionary));
+					s = build_database(global_dictionary);
+					must_read_database = FALSE;
+				}
+			}
 			break;
+		}
 #endif
-        }
-        return MENU_NOREDRAW;
-    }
+		}
+		return MENU_NOREDRAW;
+	}
 
-    return MENU_ABSENT;
+	return MENU_ABSENT;
 }
 
 /**
@@ -219,155 +241,174 @@ extc t_menu * __cdecl ODBG2_Pluginmenu(wchar_t *type)
 ////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////// FILE ROUTINES ////////////////////////////////////
 
-int find_signature_helper(void* signature_data, const char* signature_name,
-							const char* property_name, const char* value)
+struct sig_entry_s *signature_find_pos(const struct signature_list_s *list, int posstart)
 {
-	ulong	codebase_ep_offset;		/* Offset of EP relative to the start of the code base */
-	ulong	sig_len = 0;			/* Length of signature text */
-	ulong	code_len = 0;			/* Length of memory read */
-	ulong	i, j;					/* Measly index variables */
-	int		ret = 0;				/* Little 'ol return value */
+	struct sig_entry_s *ptr = NULL;
+	float x;
+	int i;
+	
+	/* accept 1 slot overflow for fetching head and tail sentinels */
+	if (posstart < -1 || posstart > (int)list->num_elements)
+		return NULL;
 
-    static char prev_signature_name[SHORTNAME] = "";
-    static struct t_signature_data *p_signature;
-	p_signature = (struct t_signature_data *)signature_data;
-
-
-    if (strcmp(signature_name, prev_signature_name) != 0) {
-		p_signature->name = _strdup(signature_name);
-		StrcopyA(prev_signature_name, sizeof(prev_signature_name), signature_name);
-        prev_signature_name[sizeof(prev_signature_name) - 1] = '\0';	/* Ensure NULL termination */
-    }
-
-	if (strcmp(property_name, "signature") == 0) {
-		p_signature->data = _strdup(value);
-	} else if (strcmp(property_name, "ep_only") == 0) {
-		p_signature->ep_signature = (strcmp(value, "true") == 0) ? TRUE : FALSE;
-
-		//:) I LOVE YOU
-		/*
-		 * Do comparison here
-		 */
-
-		/* Get length of signature so we know how much memory to read */
-		remove_char(p_signature->data, ' ');
-		sig_len = strlen(p_signature->data);
-
-		/* We're always going to search the Entry Point part of the code whether we */
-		/* check Scan EP only or not. If we scan the entire file, the entry point is still */
-		/* part of that file... */
-		if (p_signature->ep_signature == TRUE) {
-			/* Only test the bytes at the module Entry Point */
-
-			/* Calculate the EP offset relative to the begenning of the code base */
-			/* Note: We have to multiply by 2 because each uchar in memory became two char's */
-			codebase_ep_offset =  (main_module->entry - main_module->codebase) * 2;
-
-			ret = SIG_FOUND;	/* Assume this signature will match until proven otherwise */
-			/* Compare signature bytes to code starting at OEP */
-			for (i = 0; i < sig_len; i++) {
-				if ((module_code[codebase_ep_offset + i] != p_signature->data[i]) &&
-						p_signature->data[i] != '?') {
-					/* Mismatch */
-					ret = SIG_NO_MATCH;
-					break;		/* Exit for loop because we don't have a match */
-				}
-			}
-		} else if ((scan_ep_only == 0) && (p_signature->ep_signature == FALSE)) {
-			/*Start scanning from beginning of module */
-
-			/*
-			 * Brute force searching technique. Other methods might be better, but
-			 * for this implementation it doesn't really matter much. There just isn't
-			 * enough data to search through I don't think.
-			 */
-			for (i = 0; i < main_module->codesize * 2; i++) {
-				/* Always assume we'll find a match, until we don't */
-				ret = SIG_FOUND;
-
-				/* Compare signature bytes to code starting at module loction i */
-				for (j = 0; j < sig_len; j++) {
-					if ((module_code[j + i] != p_signature->data[j]) &&
-							p_signature->data[j] != '?') {
-						/* Mismatch */
-						ret = SIG_NO_MATCH;
-						break;		/* Exit for loop because we don't have a match */
-					}
-				}
-
-				/* Found a match. No need to search anymore */
-				if (ret == SIG_FOUND)
-					break;
-			}
-		}
+	if (list->num_elements <= 0) {
+		x = 0;
 	} else {
-		ret = 0;	/* unknown section/name, error */
+		x = (float)(posstart + 1) / list->num_elements;
+	}
+	if (x <= 0.5) {
+		/* first half: get to posstart from head */
+		for (i = -1, ptr = list->head_sentinel; i < posstart; ptr = ptr->next, i++);
+	} else {
+		/* last half: get to posstart from tail */
+		for (i = list->num_elements, ptr = list->tail_sentinel; i > posstart; ptr = ptr->prev, i--);
 	}
 
-	return ret;
+	return ptr;
+}
+
+int append_signature(struct signature_list_s *list, const struct sig_entry_s *entry)
+{
+	struct sig_entry_s *new_entry, *succ, *prec;
+
+	new_entry = (struct sig_entry_s *)Memalloc(sizeof(struct sig_entry_s), SILENT|ZEROINIT);
+
+	new_entry->data = cstrndup(entry->data, DATALEN);
+	new_entry->name = cstrndup(entry->name, TEXTLEN);
+	new_entry->ep_signature = entry->ep_signature;
+	new_entry->sig_len = entry->sig_len;
+
+	/* actually append element */
+	prec = signature_find_pos(list, list->num_elements - 1);
+	succ = prec->next;
+
+	prec->next = new_entry;
+	new_entry->prev = prec;
+	new_entry->next = succ;
+	succ->prev = new_entry;
+
+	list->num_elements++;
+
+	return 0;
+}
+
+struct signature_list_s *build_database(dictionary *dict)
+{
+	char sec_buf[TEXTLEN];
+	struct signature_list_s *list = NULL;
+	struct sig_entry_s *entry = NULL;
+	struct sig_entry_s *prev_sig = NULL;
+	int i, n, ep_only;
+	char *section_name;
+	char *key;
+
+	list = signature_list_alloc();
+	if (list == NULL)
+		return NULL;
+
+	for (i = 0; i < iniparser_getnsec(dict); i++) {
+		prev_sig = entry;	/* saves previous entry before the new entry is created */
+
+		/* get name, section data, and ep_only */
+		section_name = iniparser_getsecname(dict, i);
+
+		n = StrcopyA(sec_buf, TEXTLEN, section_name);
+		n += StrcopyA(sec_buf + n, TEXTLEN - n, ":signature");
+		key = iniparser_getstring(dict, sec_buf, "00");
+		
+		n = StrcopyA(sec_buf, TEXTLEN, section_name);
+		n += StrcopyA(sec_buf + n, TEXTLEN - n, ":ep_only");
+		ep_only = (strcmp(iniparser_getstring(dict, sec_buf, "false"), "true") == 0) ? TRUE : FALSE;
+
+		/* Allocate entry */
+		entry = (struct sig_entry_s *)Memalloc(sizeof(struct sig_entry_s), SILENT|ZEROINIT);
+		entry->name = cstrndup(section_name, TEXTLEN);
+		/* Remove spaces from key (data) to save space make comparing faster */
+		remove_char(key, ' ');
+		entry->data = cstrndup(key, DATALEN);
+		entry->sig_len = StrlenA(entry->data, DATALEN);
+		entry->ep_signature = ep_only;
+		entry->prev = prev_sig;
+		if (entry->prev != NULL)
+			entry->prev->next = entry;
+
+		/* add it to our list */
+		append_signature(list, entry);
+	}
+	
+	return list;
 }
 
 int scan_module(void)
 {
 	FILE	*signature_file = NULL;		/* Pointer to database file */
-	wchar_t	signature_name[TEXTLEN];	/* Name of signature from database file */
-	BOOL	sigs_match = TRUE;			/* Flag FALSE if signatures don't match */
+	struct sig_entry_s *cur_sig = NULL;
 	int		ret;						/* Return values for certain functions */
-#if DEVELOPMENT_MODE
+
+#ifdef DEVELOPMENT_MODE
 	long	start_time, end_time;
 #endif
-    struct t_signature_data sig_data;
 
 	Resumeallthreads();
 
 	/* Get the main memory module so we can use the OEP */
-	main_module = Findmainmodule();
+	global_main_module = Findmainmodule();
 
 	/* Make sure there is actually a module loaded into Olly */
-	if (main_module != NULL) {
-		if (scan_ep_only == 1) {
-			Addtolist(0, DRAW_HILITE, L"[*] Scanning EP only");
-		} else {
-			Addtolist(0, DRAW_HILITE, L"[*] Scanning entire file");
-		}
+	if (global_main_module != NULL) {
 
-#if DEVELOPMENT_MODE
+#ifdef DEVELOPMENT_MODE
 		start_time = clock();
 #endif
 
 		/* Allocate and read module memory into buffer */
-		module_mem_create();
+		if (new_process_loaded == TRUE) {
+			module_mem_free(global_module_code);
+			global_module_code = module_mem_alloc();
+			new_process_loaded = FALSE;
+		}
 
-		/* Initiate the parsing! */
-		ret = parse_database(database_path, find_signature_helper, &sig_data);
+		/* If the settings have changed we need to free the old signature database */
+		if(must_read_database == TRUE) {
+			dictionary_del(global_dictionary);
+			global_dictionary = iniparser_load(database_path);
+			if (global_dictionary == NULL) {
+				Addtolist(0, DRAW_HILITE, L"[!] Could not initialize database");
+				return 0;
+			} else {
+				Addtolist(0, DRAW_NORMAL, L"[*] Total signatures: %i", iniparser_getnsec(global_dictionary));
+				signature_list_free(global_signature_list);
+				global_signature_list = build_database(global_dictionary);
+				if (global_signature_list == NULL) {
+					Addtolist(0, DRAW_HILITE, L"[!] Could not build database");
+					return 0;
+				}
+				must_read_database = FALSE;	/* Unset until a new signature is loaded */
+			}
+		}
 
-#if DEVELOPMENT_MODE
+		cur_sig = global_signature_list->head_sentinel;	/* Set our current signature to the root node */
+		
+		if (global_scan_ep_only == 1) {
+			Addtolist(0, DRAW_NORMAL, L"[+] Searching EP only for signatures");
+		} else {
+			Addtolist(0, DRAW_NORMAL, L"[*] Searching entire module for signatures");
+		}
+
+		/* Scan the module for a signature */
+		ret = find_signature(cur_sig);
+
+#ifdef DEVELOPMENT_MODE
 		end_time = clock();
+		Addtolist(0, DRAW_NORMAL, L"Total time: %ldms", end_time - start_time);
 #endif
-		if (ret == SIG_FOUND) {
-			Asciitounicode(sig_data.name , DATALEN, signature_name, DATALEN);
-			Addtolist(0, DRAW_HILITE, L"[+] %s", signature_name);
-#if DEVELOPMENT_MODE
-			Addtolist(0, DRAW_HILITE, L"Total time: %ldms", end_time - start_time);
-#endif
-			MessageBox(hwollymain, signature_name, L"OllyID", MB_OK | MB_ICONINFORMATION);
-			ret = 0;
-		} else if (ret == SIG_NO_MATCH) {
+		if (ret == SIG_NO_MATCH) {
 			Addtolist(0, DRAW_HILITE, L"[!] Nothing Found");
-#if DEVELOPMENT_MODE
-			Addtolist(0, DRAW_HILITE, L"Total time: %ldms", end_time - start_time);
-#endif
-			MessageBox(hwollymain, L"Nothing found", L"OllyID", MB_OK | MB_ICONINFORMATION);
 			ret = 1;
-		} else if (ret == -1) {
-        	Addtolist(0, DRAW_HILITE, L"[!] Could not open signature database: %s", database_path);
-			ret = 2;
-		} else {//if (ret > 0) {
-			Addtolist(0, DRAW_HILITE, L"[!] Bad config file. First error on line %d", ret);
-			return 3;
 		}
 	} else {		/* No module loaded */
 		Addtolist(0, DRAW_HILITE, L"[!] No module loaded");
+		MessageBox(hwollymain, L"No module loaded", L"OllyID", MB_OK | MB_ICONINFORMATION);
 	}
 
 	Suspendallthreads();
@@ -379,25 +420,190 @@ int scan_module(void)
 	return ret;
 }
 
-int module_mem_create(void)
+int compare_from_entry_point(const char *module, const char *data, const int signature_len)
 {
-	uchar *code_buf = NULL;
-	ulong code_len;
+	ulong	codebase_ep_offset;	/* Offset of EP relative to the start of the code base */
+	int i;						/* Indexing variable */
 
-	if (module_code == NULL) {
-		/* Allocate and read memory for the module code to be stored for faster searching */
-		code_buf = (uchar *)Memalloc(main_module->codesize, REPORT|ZEROINIT);
-		code_len = Readmemory((uchar *)code_buf, main_module->codebase, main_module->codesize, MM_SILENT);
-		/* Convert byte codes to a UNICODE string */
-		module_code = (char *)Memalloc((code_len * 2) + 1, REPORT|ZEROINIT);	/* Include +1 for \0 */
-		HexdumpA(module_code, code_buf, code_len);
+	/* Calculate the EP offset relative to the begenning of the code base */
+	/* We have to multiply by 2 because each uchar in memory became two char's */
+	codebase_ep_offset =  (global_main_module->entry - global_main_module->codebase) * 2;
 
-		/* Free the code buffer */
-		if (code_buf != NULL) {
-			Memfree(code_buf);
+	/* Compare signature bytes to code starting at OEP */
+	for (i = 0; i < signature_len; i++) {
+		if ((module[codebase_ep_offset + i] != data[i]) && (data[i] != '?'))
+			return FALSE;	/* Mismatch */
+	}
+
+	return TRUE;
+}
+
+int compare_from_module_start(const char *module, const char *data, const int signature_len)
+{
+	ulong i;	/* Indexing variable */
+	int j;		/* Indexing variable */
+
+	/*Start scanning from beginning of module */
+	for (i = 0; i < global_main_module->codesize * 2; i++) {
+		/* Compare signature bytes to code starting at module loction i */
+		for (j = 0; j < signature_len; j++) {
+			if ((module[j + i] != data[j]) && (data[j] != '?'))
+				return FALSE;	/* Strings don't match */
 		}
 	}
-	return 1;
+
+	return TRUE;
+}
+
+int find_signature(struct sig_entry_s *entry)
+{
+	ulong	code_len = 0;			/* Length of memory read */
+	ulong	sig_counter = 1;		/* counter for current signature number scanned */
+	int		ret = SIG_NO_MATCH;		/* Little 'ol return value */
+	wchar_t	wbuf[TEXTLEN];			/* Buffer for name of current signature */
+
+
+	//:) I LOVE YOU
+
+	/* Search loop */
+	while (entry->next != NULL) {
+		/* Update progress bar */
+		Asciitounicode(entry->name, TEXTLEN, wbuf, TEXTLEN);
+		Progress((int)(((double)sig_counter / (double)global_signature_list->num_elements) * 1000.0), L"Scanning: %s  ", wbuf);
+		sig_counter++;
+
+		if (global_scan_ep_only == TRUE) {
+			if (entry->ep_signature == TRUE) {
+				ret = compare_from_entry_point(global_module_code, entry->data, entry->sig_len);
+				if (ret == TRUE) {
+					Asciitounicode(entry->name , TEXTLEN, wbuf, TEXTLEN);
+					Addtolist(0, DRAW_HILITE, L"[+] %s", wbuf);
+					return SIG_FOUND;
+				}
+			} else {
+				// skip because signature could be anywhere in file
+			}
+		} else if (global_scan_ep_only == FALSE) {
+			if (entry->ep_signature == TRUE) {
+				/* Don't scan entire file since this signature is only located at entry point */
+				ret = compare_from_entry_point(global_module_code, entry->data, entry->sig_len);
+				if (ret == TRUE) {
+					Asciitounicode(entry->name , TEXTLEN, wbuf, TEXTLEN);
+					Addtolist(0, DRAW_HILITE, L"[+] at entry: %s", wbuf);
+					return SIG_FOUND;
+				}
+			} else if ((entry->ep_signature == FALSE) && (entry->data != NULL)) {	/* sometimes data is null */
+				// scan from begenning of file
+				ret = compare_from_module_start(global_module_code, entry->data, entry->sig_len);
+				if (ret == TRUE) {
+					Asciitounicode(entry->name , TEXTLEN, wbuf, TEXTLEN);
+					Addtolist(0, DRAW_HILITE, L"[+] start: %s", wbuf);
+					return SIG_FOUND;
+				}
+			}
+		}
+
+		/* Go to the next signature and continue scanning */
+		entry = entry->next;
+	};	/* while */
+
+	return SIG_NO_MATCH;	/* If we make it here, no signature was found */
+}
+
+/* Return pointer to allocated memory */
+char *module_mem_alloc(void)
+{
+	char *ptr = NULL;
+	uchar *code_buf = NULL;
+	ulong code_len;
+	int n;
+
+	/* Allocate and read memory for the module code to be stored for faster searching */
+	code_buf = (uchar *)Memalloc(global_main_module->codesize, REPORT|ZEROINIT);
+	code_len = Readmemory((uchar *)code_buf, global_main_module->codebase, global_main_module->codesize, MM_SILENT);
+	/* Convert byte codes to a UNICODE string */
+	ptr = (char *)Memalloc((code_len * 2) + 1, REPORT|ZEROINIT);	/* Include +1 for \0 */
+	n = HexdumpA(ptr, code_buf, code_len);
+
+	/* Free the code buffer */
+	if (code_buf != NULL)
+		Memfree(code_buf);
+
+	return ptr;
+}
+
+void module_mem_free(char *module)
+{
+	/* Free memory allocated for module code bytes */
+	if (module != NULL)
+		Memfree((char *)module);
+}
+
+void free_signatures(struct sig_entry_s *data)
+{
+	if (data != NULL) {
+		struct sig_entry_s *tmp;
+		struct sig_entry_s *cur_sig = data;
+		while (cur_sig->next != NULL) {
+			tmp = cur_sig->next;
+			Memfree((struct sig_entry_s *)cur_sig->data);
+			Memfree((struct sig_entry_s *)cur_sig->name);
+			Memfree((struct sig_entry_s *)cur_sig);
+			cur_sig = tmp;
+		}
+	}
+}
+
+struct signature_list_s *signature_list_alloc(void)
+{
+	struct signature_list_s *list;
+
+	list = (struct signature_list_s *)Memalloc(sizeof(struct signature_list_s), SILENT|ZEROINIT);
+	if (list == NULL)
+		return NULL;
+
+	list->num_elements = 0;
+
+	/* head/tail sentinels */
+	list->head_sentinel = (struct sig_entry_s *)Memalloc(sizeof(struct sig_entry_s), SILENT|ZEROINIT);
+	list->tail_sentinel = (struct sig_entry_s *)Memalloc(sizeof(struct sig_entry_s), SILENT|ZEROINIT);
+	list->head_sentinel->next = list->tail_sentinel;
+	list->tail_sentinel->prev = list->head_sentinel;
+	list->head_sentinel->prev = list->tail_sentinel->next = NULL;
+	list->head_sentinel->name = list->tail_sentinel->name = NULL;
+	list->head_sentinel->data = list->tail_sentinel->data = NULL;
+
+	return list;
+}
+
+void signature_list_free(struct signature_list_s *list)
+{
+	struct sig_entry_s *entry = NULL;
+	
+	if (list == NULL)
+		return;
+		
+	entry = list->head_sentinel;
+	while (entry != list->tail_sentinel) {
+		if (entry->data != NULL)
+			Memfree((struct sig_entry_s *)entry->data);
+		if (entry->name != NULL)
+			Memfree((struct sig_entry_s *)entry->name);
+		entry = entry->next;
+		if (entry->prev != NULL)
+			Memfree((struct sig_entry_s *)entry->prev);
+	}
+	Memfree((struct signature_list_s *)list->head_sentinel);
+	Memfree((struct signature_list_s *)list->tail_sentinel);
+	Memfree((struct signature_list_s *)list);
+}
+
+int signature_list_realloc(struct signature_list_s *list)
+{
+	signature_list_free(list);
+	list = signature_list_alloc();
+
+	return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -442,15 +648,20 @@ extc int __cdecl ODBG2_Pluginquery(int ollydbgversion, ulong *features, wchar_t 
  */
 extc int __cdecl ODBG2_Plugininit(void)
 {
-	/*
-	 * Get initialization data
-	 */
+	int ret = 0;
 
 	load_settings(NULL);
 
 	Addtolist(0, DRAW_NORMAL, L"");
-	Addtolist(0, DRAW_NORMAL, L"[*] %s - v%s", PLUGIN_NAME, PLUGIN_VERS);
+	Addtolist(0, DRAW_NORMAL, L"[*] %s v%s", PLUGIN_NAME, PLUGIN_VERS);
 	Addtolist(0, DRAW_NORMAL, L"[*] Coded by: Austyn Krutsinger <akrutsinger@gmail.com>");
+	Addtolist(0, DRAW_NORMAL, L"");
+
+	/* Initialize the global list used to store the signatures */
+	global_signature_list = signature_list_alloc();
+
+	/* Set this to true so we only parse the database when needed */
+	must_read_database = TRUE;
 
 	/* Report success. */
 	return 0;
@@ -478,10 +689,14 @@ extc void __cdecl ODBG2_Pluginanalyse(t_module *pmod)
  */
 extc void __cdecl ODBG2_Plugindestroy(void)
 {
+	if (global_dictionary != NULL)
+		dictionary_del(global_dictionary);
+
+	/* Free all signatures stored in memory */
+	signature_list_free(global_signature_list);
+
 	/* Free memory allocated for module code bytes */
-	if (module_code != NULL) {
-		Memfree(module_code);
-	}
+	module_mem_free(global_module_code);
 };
 
 /*
@@ -491,7 +706,6 @@ extc void __cdecl ODBG2_Plugindestroy(void)
  */
 //extc void __cdecl ODBG2_Pluginreset(void)
 //{
-//	/* Possibly scan module here? */
 //};
 
 /*
@@ -511,7 +725,6 @@ extc void __cdecl ODBG2_Plugindestroy(void)
 
 ////////////////////////////////////////////////////////////////////////////////
 /////////////////////////// EVENTS AND NOTIFICATIONS ///////////////////////////
-
 /*
  * If you define ODBG2_Pluginmainloop(), this function will be called each time
  * from the main Windows loop in OllyDbg. If there is some (real) debug event
@@ -528,7 +741,9 @@ extc void __cdecl ODBG2_Plugindestroy(void)
 /*
  * Optional entry, notifies plugin on relatively infrequent events.
  */
-//extc void __cdecl ODBG2_Pluginnotify(int code, void *data, ulong parm1, ulong parm2)
-//{
-//};
-
+extc void __cdecl ODBG2_Pluginnotify(int code, void *data, ulong parm1, ulong parm2)
+{
+	if (code == PN_NEWPROC) {
+		new_process_loaded = TRUE;
+	}
+};

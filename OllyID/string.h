@@ -19,5 +19,6 @@ extern int get_line(FILE *fp, char *buffer, size_t buflen);
 extern char* rstrip(char* s);
 extern char* lskip(const char* s);
 extern char* find_char_or_comment(const char* s, char c);
+extern char *cstrndup(const char *src, int max_len);
 
 #endif /* _OLLYID_HELPER_H_ */
