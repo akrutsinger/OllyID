@@ -19,6 +19,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////// HELPER FUNCTIONS ////////////////////////////////
 
+
+char *cstrndup(const char *src, int max_len)
+{
+	/* Allocate memory */
+	char *dst = (char *)Memalloc(StrlenA(src, max_len) * sizeof(char) + 1, SILENT|ZEROINIT);
+	if (dst != NULL)
+		StrcopyA(dst, max_len, src);	/* Copy string if allocated successfully */
+	return dst;		/* Return new memory */
+}
+
 /**
  * strnicmp - Case insensitive, length-limited string comparison
  * @s1: One string
@@ -77,17 +87,17 @@ extern int get_line(FILE *fp, char *buffer, size_t buflen)
 extern char* rstrip(char* s)
 {
 	char* p = s + StrlenA(s, DATALEN);
-    while (p > s && isspace(*--p))
-        *p = '\0';
-    return s;
+	while (p > s && isspace(*--p))
+		*p = '\0';
+	return s;
 }
 
 /* Return pointer to first non-whitespace char in given string. */
 extern char* lskip(const char* s)
 {
-    while (*s && isspace(*s))
-        s++;
-    return (char*)s;
+	while (*s && isspace(*s))
+		s++;
+	return (char*)s;
 }
 
 /* Return pointer to first char c or ';' comment in given string, or pointer to
@@ -95,10 +105,10 @@ extern char* lskip(const char* s)
    character to register as a comment. */
 extern char* find_char_or_comment(const char* s, char c)
 {
-    int was_whitespace = 0;
-    while (*s && *s != c && !(was_whitespace && *s == ';')) {
-        was_whitespace = isspace(*s);
-        s++;
-    }
-    return (char*)s;
+	int was_whitespace = 0;
+	while (*s && *s != c && !(was_whitespace && *s == ';')) {
+		was_whitespace = isspace(*s);
+		s++;
+	}
+	return (char*)s;
 }

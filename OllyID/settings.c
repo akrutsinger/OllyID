@@ -22,7 +22,9 @@
 extern wchar_t database_path[MAX_PATH];
 extern int scan_on_analysis;
 extern int scan_on_mod_load;
-extern int scan_ep_only;
+extern int global_scan_ep_only;
+extern int must_read_database = TRUE;
+extern int new_process_loaded = FALSE;
 
 INT_PTR CALLBACK settings_dialog_procedure(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -82,6 +84,9 @@ void save_settings(HWND hDlg)
 	/* Database Path */
 	GetDlgItemText(hDlg, IDC_DATABASE_PATH, database_path, MAXPATH);
 	Writetoini(NULL, PLUGIN_NAME, L"Database path", database_path);
+	
+	/* Global marker telling us the database file has changed */
+	must_read_database = TRUE;
 
 	/* Scan on Analysis */
 	scan_on_analysis = SendMessage(GetDlgItem(hDlg, IDC_SCAN_ON_ANALYSIS), BM_GETCHECK, 0, 0);
@@ -100,12 +105,12 @@ void save_settings(HWND hDlg)
 				scan_on_mod_load);
 
 	/* Scan EP only */
-	scan_ep_only = SendMessage(GetDlgItem(hDlg, IDC_SCAN_EP_ONLY), BM_GETCHECK, 0, 0);
+	global_scan_ep_only = SendMessage(GetDlgItem(hDlg, IDC_SCAN_EP_ONLY), BM_GETCHECK, 0, 0);
 	Writetoini(NULL,
 				PLUGIN_NAME,
 				L"Scan EP only", L"%i",
 				/* Writes 1 if checked, 0 if unchecked */
-				scan_ep_only);
+				global_scan_ep_only);
 }
 
 
@@ -139,9 +144,9 @@ void load_settings(HWND hDlg)
 	}
 
 	/* Scan EP only */
-	scan_ep_only = 0;
-	ret = Getfromini( NULL, PLUGIN_NAME, L"Scan EP only", L"%i", &scan_ep_only);
-	if (scan_ep_only == 1) {
+	global_scan_ep_only = 0;
+	ret = Getfromini( NULL, PLUGIN_NAME, L"Scan EP only", L"%i", &global_scan_ep_only);
+	if (global_scan_ep_only == 1) {
 		SendDlgItemMessage(hDlg, IDC_SCAN_EP_ONLY, BM_SETCHECK, BST_CHECKED, 0);
 	}
 }
