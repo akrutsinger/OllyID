@@ -23,7 +23,13 @@
  * [*] = Changed
  * [~] = Almost there...
  *
- * Version 0.4.0 (24FEB2013) - IN DEVELOPMENT
+ * Version 0.5.0 (25FEB2013)
+ * [+] Added support for OllyDbg 201h
+ * [+] Option: Message box for search result
+ * [+] Option: Verbose program output
+ * [*] Standardized naming of global variables
+ *
+ * Version 0.4.0 (24FEB2013)
  * [+] Signatures are stored in link list dramatically increasing search speed
  * [+] Added internal cstrndup function to replace _strdup
  * [+] Added progress bar during scanning
@@ -70,10 +76,8 @@
  * TODO
  * -----------------------------------------------------------------------------
  *
- * [ ] Option: Verbose program output
- * [ ] Option: Message box for search result?
  * [ ] Option: Scan On Module Load
- * [ ] Option: Add show_scan_time option
+ * [ ] Make parsing and dictionary solely unicode
  * [ ] Adjust location of Suspendallthreads() and Resumeallthreads()
  * [ ] Check for memory leaks
  * [ ] Add menu setting for show info in Log window or MessageBox or both
@@ -111,12 +115,12 @@
 #include "resource.h"
 
 /* Globals Definitions - Module specific */
-static HINSTANCE				plugin_instance = NULL;		/* Instance of plugin DLL */
-static t_module					*global_main_module = NULL;		/* Pointer to main module struct */
-static char						*global_module_code = NULL;		/* Global pointer for allocated module code */
-static struct signature_list_s	*global_signature_list = NULL;
-static dictionary				*global_dictionary = NULL;						
-
+static HINSTANCE				main_plugin_instance = NULL;	/* Instance of plugin DLL */
+static t_module					*main_module = NULL;			/* Pointer to main module struct */
+static char						*main_module_code = NULL;		/* Global pointer for allocated module code */
+static struct signature_list_s	*main_signature_list = NULL;	/* Global pointer for list of signature entries */
+static dictionary				*main_dictionary = NULL;		/* Dictionary structure that stores database information */
+static long						start_time, end_time;			/* Used for calculating search time */
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////// PLUGIN MENUS EMBEDDED INTO OLLYDBG WINDOWS //////////////////
 
@@ -185,7 +189,7 @@ int menu_handler(t_table* pTable, wchar_t* pName, ulong index, int nMode)
 	case MENU_EXECUTE:
 		switch (index) {
 		case MENU_SETTINGS: /* Menu -> Settings */
-			DialogBox(plugin_instance,
+			DialogBox(main_plugin_instance,
 						MAKEINTRESOURCE(IDD_SETTINGS),
 						hwollymain,
 						(DLGPROC)settings_dialog_procedure);
@@ -202,14 +206,16 @@ int menu_handler(t_table* pTable, wchar_t* pName, ulong index, int nMode)
 		case MENU_TEST_CODE: /* Menu -> Test Code */
 		{
 			struct signature_list_s *s;
-			if (must_read_database == TRUE) {
-				global_dictionary = iniparser_load(database_path);
-				if (global_dictionary == NULL) {
-					Addtolist(0, DRAW_HILITE, L"[!] Could not initialize database");
+			if (global_must_read_database == TRUE) {
+				main_dictionary = iniparser_load(global_database_path);
+				if (main_dictionary == NULL) {
+					if (global_log_level >= LOG_ERROR)
+						Addtolist(0, DRAW_HILITE, L"[!] Could not initialize database");
 				} else {
-					Addtolist(0, DRAW_NORMAL, L"[*] Total signatures: %i", iniparser_getnsec(global_dictionary));
-					s = build_database(global_dictionary);
-					must_read_database = FALSE;
+					if (global_log_level >= LOG_INFO)
+						Addtolist(0, DRAW_NORMAL, L"[*] Total signatures: %i", iniparser_getnsec(main_dictionary));
+					s = build_database(main_dictionary);
+					global_must_read_database = FALSE;
 				}
 			}
 			break;
@@ -345,77 +351,82 @@ int scan_module(void)
 	struct sig_entry_s *cur_sig = NULL;
 	int		ret;						/* Return values for certain functions */
 
-#ifdef DEVELOPMENT_MODE
-	long	start_time, end_time;
-#endif
-
-	Resumeallthreads();
+	Suspendallthreads();
 
 	/* Get the main memory module so we can use the OEP */
-	global_main_module = Findmainmodule();
+	main_module = Findmainmodule();
 
 	/* Make sure there is actually a module loaded into Olly */
-	if (global_main_module != NULL) {
+	if (main_module != NULL) {
 
-#ifdef DEVELOPMENT_MODE
-		start_time = clock();
-#endif
+		start_timer();
 
 		/* Allocate and read module memory into buffer */
-		if (new_process_loaded == TRUE) {
-			module_mem_free(global_module_code);
-			global_module_code = module_mem_alloc();
-			new_process_loaded = FALSE;
+		if (global_new_process_loaded == TRUE) {
+			module_mem_free(main_module_code);
+			main_module_code = module_mem_alloc();
+			global_new_process_loaded = FALSE;
 		}
 
 		/* If the settings have changed we need to free the old signature database */
-		if(must_read_database == TRUE) {
-			dictionary_del(global_dictionary);
-			global_dictionary = iniparser_load(database_path);
-			if (global_dictionary == NULL) {
-				Addtolist(0, DRAW_HILITE, L"[!] Could not initialize database");
+		if(global_must_read_database == TRUE) {
+			dictionary_del(main_dictionary);
+			main_dictionary = iniparser_load(global_database_path);
+			if (main_dictionary == NULL) {
+				if (global_log_level >= LOG_ERROR)
+					Addtolist(0, DRAW_HILITE, L"[!] Could not initialize database");
 				return 0;
 			} else {
-				Addtolist(0, DRAW_NORMAL, L"[*] Total signatures: %i", iniparser_getnsec(global_dictionary));
-				signature_list_free(global_signature_list);
-				global_signature_list = build_database(global_dictionary);
-				if (global_signature_list == NULL) {
-					Addtolist(0, DRAW_HILITE, L"[!] Could not build database");
+				if (global_log_level >= LOG_INFO)
+					Addtolist(0, DRAW_NORMAL, L"[*] Total signatures: %i", iniparser_getnsec(main_dictionary));
+				signature_list_free(main_signature_list);
+				main_signature_list = build_database(main_dictionary);
+				if (main_signature_list == NULL) {
+					if (global_log_level >= LOG_ERROR)
+						Addtolist(0, DRAW_HILITE, L"[!] Could not build database");
 					return 0;
 				}
-				must_read_database = FALSE;	/* Unset until a new signature is loaded */
+				global_must_read_database = FALSE;	/* Unset until a new signature is loaded */
 			}
 		}
 
-		cur_sig = global_signature_list->head_sentinel;	/* Set our current signature to the root node */
+		cur_sig = main_signature_list->head_sentinel;	/* Set our current signature to the root node */
 		
 		if (global_scan_ep_only == 1) {
-			Addtolist(0, DRAW_NORMAL, L"[+] Searching EP only for signatures");
+			if (global_log_level >= LOG_INFO)
+				Addtolist(0, DRAW_NORMAL, L"[+] Searching EP only for signatures");
 		} else {
-			Addtolist(0, DRAW_NORMAL, L"[*] Searching entire module for signatures");
+			if (global_log_level >= LOG_INFO)
+				Addtolist(0, DRAW_NORMAL, L"[*] Searching entire module for signatures");
 		}
 
 		/* Scan the module for a signature */
 		ret = find_signature(cur_sig);
 
-#ifdef DEVELOPMENT_MODE
-		end_time = clock();
-		Addtolist(0, DRAW_NORMAL, L"Total time: %ldms", end_time - start_time);
-#endif
 		if (ret == SIG_NO_MATCH) {
-			Addtolist(0, DRAW_HILITE, L"[!] Nothing Found");
+			stop_timer();
+			if (global_log_level > LOG_NOTHING)
+				Addtolist(0, DRAW_HILITE, L"[!] Nothing Found");
+			if (global_show_results_msgbox == TRUE )
+				MessageBox(hwollymain, L"Nothing found", L"OllyID", MB_OK | MB_ICONINFORMATION);
 			ret = 1;
 		}
+
+		if (global_log_level >= LOG_INFO)
+			Addtolist(0, DRAW_NORMAL, L"[*] Total time: %ldms", end_time - start_time);
 	} else {		/* No module loaded */
-		Addtolist(0, DRAW_HILITE, L"[!] No module loaded");
-		MessageBox(hwollymain, L"No module loaded", L"OllyID", MB_OK | MB_ICONINFORMATION);
+		if (global_log_level >= LOG_ERROR)
+			Addtolist(0, DRAW_HILITE, L"[!] No module loaded");
+		if (global_show_results_msgbox == TRUE )
+			MessageBox(hwollymain, L"No module loaded", L"OllyID", MB_OK | MB_ICONINFORMATION);
 	}
 
-	Suspendallthreads();
 
 	/* Free resources */
 	if (signature_file != NULL)
 		fclose(signature_file);
+		
+	Resumeallthreads();
 
 	return ret;
 }
@@ -427,7 +438,7 @@ int compare_from_entry_point(const char *module, const char *data, const int sig
 
 	/* Calculate the EP offset relative to the begenning of the code base */
 	/* We have to multiply by 2 because each uchar in memory became two char's */
-	codebase_ep_offset =  (global_main_module->entry - global_main_module->codebase) * 2;
+	codebase_ep_offset =  (main_module->entry - main_module->codebase) * 2;
 
 	/* Compare signature bytes to code starting at OEP */
 	for (i = 0; i < signature_len; i++) {
@@ -444,7 +455,7 @@ int compare_from_module_start(const char *module, const char *data, const int si
 	int j;		/* Indexing variable */
 
 	/*Start scanning from beginning of module */
-	for (i = 0; i < global_main_module->codesize * 2; i++) {
+	for (i = 0; i < main_module->codesize * 2; i++) {
 		/* Compare signature bytes to code starting at module loction i */
 		for (j = 0; j < signature_len; j++) {
 			if ((module[j + i] != data[j]) && (data[j] != '?'))
@@ -469,15 +480,19 @@ int find_signature(struct sig_entry_s *entry)
 	while (entry->next != NULL) {
 		/* Update progress bar */
 		Asciitounicode(entry->name, TEXTLEN, wbuf, TEXTLEN);
-		Progress((int)(((double)sig_counter / (double)global_signature_list->num_elements) * 1000.0), L"Scanning: %s  ", wbuf);
+		Progress((int)(((double)sig_counter / (double)main_signature_list->num_elements) * 1000.0), L"Scanning: %s  ", wbuf);
 		sig_counter++;
 
 		if (global_scan_ep_only == TRUE) {
 			if (entry->ep_signature == TRUE) {
-				ret = compare_from_entry_point(global_module_code, entry->data, entry->sig_len);
+				ret = compare_from_entry_point(main_module_code, entry->data, entry->sig_len);
 				if (ret == TRUE) {
+					stop_timer();
 					Asciitounicode(entry->name , TEXTLEN, wbuf, TEXTLEN);
-					Addtolist(0, DRAW_HILITE, L"[+] %s", wbuf);
+					if (global_log_level > LOG_NOTHING)
+						Addtolist(0, DRAW_HILITE, L"[+] %s", wbuf);
+					if (global_show_results_msgbox == TRUE )
+						MessageBox(hwollymain, wbuf, L"OllyID", MB_OK);
 					return SIG_FOUND;
 				}
 			} else {
@@ -486,18 +501,26 @@ int find_signature(struct sig_entry_s *entry)
 		} else if (global_scan_ep_only == FALSE) {
 			if (entry->ep_signature == TRUE) {
 				/* Don't scan entire file since this signature is only located at entry point */
-				ret = compare_from_entry_point(global_module_code, entry->data, entry->sig_len);
+				ret = compare_from_entry_point(main_module_code, entry->data, entry->sig_len);
 				if (ret == TRUE) {
+					stop_timer();
 					Asciitounicode(entry->name , TEXTLEN, wbuf, TEXTLEN);
-					Addtolist(0, DRAW_HILITE, L"[+] at entry: %s", wbuf);
+					if (global_log_level > LOG_NOTHING)
+						Addtolist(0, DRAW_HILITE, L"[+] %s", wbuf);
+					if (global_show_results_msgbox == TRUE )
+						MessageBox(hwollymain, wbuf, L"OllyID", MB_OK);
 					return SIG_FOUND;
 				}
 			} else if ((entry->ep_signature == FALSE) && (entry->data != NULL)) {	/* sometimes data is null */
 				// scan from begenning of file
-				ret = compare_from_module_start(global_module_code, entry->data, entry->sig_len);
+				ret = compare_from_module_start(main_module_code, entry->data, entry->sig_len);
 				if (ret == TRUE) {
+					stop_timer();
 					Asciitounicode(entry->name , TEXTLEN, wbuf, TEXTLEN);
-					Addtolist(0, DRAW_HILITE, L"[+] start: %s", wbuf);
+					if (global_log_level > LOG_NOTHING)
+						Addtolist(0, DRAW_HILITE, L"[+] %s", wbuf);
+					if (global_show_results_msgbox == TRUE )
+						MessageBox(hwollymain, wbuf, L"OllyID", MB_OK);
 					return SIG_FOUND;
 				}
 			}
@@ -519,8 +542,8 @@ char *module_mem_alloc(void)
 	int n;
 
 	/* Allocate and read memory for the module code to be stored for faster searching */
-	code_buf = (uchar *)Memalloc(global_main_module->codesize, REPORT|ZEROINIT);
-	code_len = Readmemory((uchar *)code_buf, global_main_module->codebase, global_main_module->codesize, MM_SILENT);
+	code_buf = (uchar *)Memalloc(main_module->codesize, REPORT|ZEROINIT);
+	code_len = Readmemory((uchar *)code_buf, main_module->codebase, main_module->codesize, MM_SILENT);
 	/* Convert byte codes to a UNICODE string */
 	ptr = (char *)Memalloc((code_len * 2) + 1, REPORT|ZEROINIT);	/* Include +1 for \0 */
 	n = HexdumpA(ptr, code_buf, code_len);
@@ -606,6 +629,16 @@ int signature_list_realloc(struct signature_list_s *list)
 	return 0;
 }
 
+void start_timer(void)
+{
+	start_time = clock();
+}
+
+void stop_timer(void)
+{
+	end_time = clock();
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 //////////////////////////// PLUGIN INITIALIZATION /////////////////////////////
 
@@ -617,7 +650,7 @@ int signature_list_realloc(struct signature_list_s *list)
 BOOL WINAPI DllEntryPoint(HINSTANCE hinstDll, DWORD fdwReason, LPVOID lpReserved)
 {
 	if (fdwReason == DLL_PROCESS_ATTACH)
-		plugin_instance = hinstDll;		/* Save plugin instance */
+		main_plugin_instance = hinstDll;		/* Save plugin instance */
 	return 1;							/* Report success */
 };
 
@@ -658,10 +691,10 @@ extc int __cdecl ODBG2_Plugininit(void)
 	Addtolist(0, DRAW_NORMAL, L"");
 
 	/* Initialize the global list used to store the signatures */
-	global_signature_list = signature_list_alloc();
+	main_signature_list = signature_list_alloc();
 
 	/* Set this to true so we only parse the database when needed */
-	must_read_database = TRUE;
+	global_must_read_database = TRUE;
 
 	/* Report success. */
 	return 0;
@@ -676,7 +709,7 @@ extc int __cdecl ODBG2_Plugininit(void)
  */
 extc void __cdecl ODBG2_Pluginanalyse(t_module *pmod)
 {
-	if (scan_on_analysis == 1) {
+	if (global_scan_on_analysis == 1) {
 		scan_module();
 	}
 };
@@ -689,14 +722,14 @@ extc void __cdecl ODBG2_Pluginanalyse(t_module *pmod)
  */
 extc void __cdecl ODBG2_Plugindestroy(void)
 {
-	if (global_dictionary != NULL)
-		dictionary_del(global_dictionary);
+	if (main_dictionary != NULL)
+		dictionary_del(main_dictionary);
 
 	/* Free all signatures stored in memory */
-	signature_list_free(global_signature_list);
+	signature_list_free(main_signature_list);
 
 	/* Free memory allocated for module code bytes */
-	module_mem_free(global_module_code);
+	module_mem_free(main_module_code);
 };
 
 /*
@@ -744,6 +777,8 @@ extc void __cdecl ODBG2_Plugindestroy(void)
 extc void __cdecl ODBG2_Pluginnotify(int code, void *data, ulong parm1, ulong parm2)
 {
 	if (code == PN_NEWPROC) {
-		new_process_loaded = TRUE;
+		global_new_process_loaded = TRUE;
+//		if (global_scan_on_mod_load == TRUE)
+//			scan_module();
 	}
 };
