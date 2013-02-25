@@ -14,7 +14,7 @@
 #define _OLLYID_H_
 
 #define PLUGIN_NAME		L"OllyID"		/* Unique plugin name */
-#define PLUGIN_VERS		L"0.4.0"		/* Plugin version (stable . update . patch  - status) */
+#define PLUGIN_VERS		L"0.5.0"		/* Plugin version (stable . update . patch  - status) */
 
 /* Menu items */
 #define	MENU_LOG_WINDOW		1
@@ -23,6 +23,11 @@
 #define	MENU_SCAN_MODULE	4
 #define	MENU_CREATE_SIG		5
 #define MENU_TEST_CODE		255
+
+/* Verbosity */
+#define	LOG_NOTHING		0
+#define	LOG_ERROR		1
+#define	LOG_INFO		2
 
 #define SIG_FOUND		1
 #define SIG_NO_MATCH	-1
@@ -49,6 +54,8 @@ struct sig_entry_s *signature_find_pos(const struct signature_list_s *list, int 
 int append_signature(struct signature_list_s *list, const struct sig_entry_s *entry);
 struct signature_list_s *build_database(dictionary *dict);
 int signature_list_realloc(struct signature_list_s *list);
+void start_timer(void);
+void stop_timer(void);
 
 /**
  * Global Declarations
