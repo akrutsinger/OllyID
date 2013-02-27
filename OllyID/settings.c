@@ -28,8 +28,11 @@ extern int		global_new_process_loaded	= FALSE;
 extern int		global_log_level			= 1;
 extern int		global_show_results_msgbox	= TRUE;
 
+static int		database_path_changed		= FALSE;	/* Module specific indicator if database path changed */
+
 INT_PTR CALLBACK settings_dialog_procedure(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+	int ret;
 	switch (uMsg) { 
 	case WM_COMMAND:
 		switch (LOWORD(wParam)) {
@@ -43,8 +46,11 @@ INT_PTR CALLBACK settings_dialog_procedure(HWND hDlg, UINT uMsg, WPARAM wParam, 
 				EndDialog(hDlg, 0);
 				return TRUE;
 			case IDC_BROWSE:
-				Browsefilename(L"OllyID - Open database", global_database_path, L"*.txt", (wchar_t*)plugindir, L"txt", hwollymain, BRO_FILE);
-				SetDlgItemText(hDlg, IDC_DATABASE_PATH, (LPCWSTR)global_database_path);
+				ret = Browsefilename(L"OllyID - Open database", global_database_path, L"*.txt", (wchar_t*)plugindir, L"txt", hwollymain, BRO_FILE);
+				if (ret != 0) {
+					SetDlgItemText(hDlg, IDC_DATABASE_PATH, (LPCWSTR)global_database_path);
+					database_path_changed = TRUE;
+				}
 				return TRUE;
 		}
 		return TRUE;
@@ -54,6 +60,7 @@ INT_PTR CALLBACK settings_dialog_procedure(HWND hDlg, UINT uMsg, WPARAM wParam, 
 		DragQueryFile(hdrop, 0, global_database_path, sizeof(global_database_path));
 		DragFinish(hdrop);
 		SetDlgItemText(hDlg, IDC_DATABASE_PATH, (LPCWSTR)global_database_path);
+		database_path_changed = TRUE;
 		SetFocus(GetDlgItem(hDlg, IDC_DATABASE_PATH));
 		return TRUE;
 	}
@@ -77,11 +84,13 @@ INT_PTR CALLBACK settings_dialog_procedure(HWND hDlg, UINT uMsg, WPARAM wParam, 
 void save_settings(HWND hDlg)
 {
 	/* Database Path */
-	GetDlgItemText(hDlg, IDC_DATABASE_PATH, global_database_path, MAXPATH);
-	Writetoini(NULL, PLUGIN_NAME, L"Database path", global_database_path);
+	if (database_path_changed == TRUE) {
+		GetDlgItemText(hDlg, IDC_DATABASE_PATH, global_database_path, MAXPATH);
+		Writetoini(NULL, PLUGIN_NAME, L"Database path", global_database_path);
 	
-	/* Global marker telling us the database file has changed */
-	global_must_read_database = TRUE;
+		/* Global marker telling us the database file has changed */
+		global_must_read_database = TRUE;
+	}
 
 	/* Scan on Analysis */
 	global_scan_on_analysis = SendMessage(GetDlgItem(hDlg, IDC_SCAN_ON_ANALYSIS), BM_GETCHECK, 0, 0);

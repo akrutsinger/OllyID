@@ -205,19 +205,7 @@ int menu_handler(t_table* pTable, wchar_t* pName, ulong index, int nMode)
 #ifdef DEVELOPMENT_MODE
 		case MENU_TEST_CODE: /* Menu -> Test Code */
 		{
-			struct signature_list_s *s;
-			if (global_must_read_database == TRUE) {
-				main_dictionary = iniparser_load(global_database_path);
-				if (main_dictionary == NULL) {
-					if (global_log_level >= LOG_ERROR)
-						Addtolist(0, DRAW_HILITE, L"[!] Could not initialize database");
-				} else {
-					if (global_log_level >= LOG_INFO)
-						Addtolist(0, DRAW_NORMAL, L"[*] Total signatures: %i", iniparser_getnsec(main_dictionary));
-					s = build_database(main_dictionary);
-					global_must_read_database = FALSE;
-				}
-			}
+			Addtolist(0, DRAW_HILITE, L"database changed: %i", global_must_read_database);
 			break;
 		}
 #endif
