@@ -1,7 +1,7 @@
 /*******************************************************************************
  * OllyID - OllyID.c
  *
- * Copyright (c) 2012, Austyn Krutsinger
+ * Copyright (c) 2012-2013, Austyn Krutsinger
  * All rights reserved.
  *
  * OllyID is released under the New BSD license (see LICENSE.txt).
