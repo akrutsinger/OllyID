@@ -356,6 +356,10 @@ int scan_module(void)
 			global_new_process_loaded = FALSE;
 		}
 
+		/* Initialize the global list used to store the signatures */
+		if (main_signature_list == NULL)
+			main_signature_list = signature_list_alloc();
+
 		/* If the settings have changed we need to free the old signature database */
 		if(global_must_read_database == TRUE) {
 			dictionary_del(main_dictionary);
@@ -604,8 +608,10 @@ void signature_list_free(struct signature_list_s *list)
 		if (entry->prev != NULL)
 			Memfree((struct sig_entry_s *)entry->prev);
 	}
-	Memfree((struct signature_list_s *)list->head_sentinel);
-	Memfree((struct signature_list_s *)list->tail_sentinel);
+	if (list->head_sentinel != NULL)
+		Memfree((struct signature_list_s *)list->head_sentinel);
+	if (list->tail_sentinel != NULL)
+		Memfree((struct signature_list_s *)list->tail_sentinel);
 	Memfree((struct signature_list_s *)list);
 }
 
@@ -677,9 +683,6 @@ extc int __cdecl ODBG2_Plugininit(void)
 	Addtolist(0, DRAW_NORMAL, L"[*] %s v%s", PLUGIN_NAME, PLUGIN_VERS);
 	Addtolist(0, DRAW_NORMAL, L"[*] Coded by: Austyn Krutsinger <akrutsinger@gmail.com>");
 	Addtolist(0, DRAW_NORMAL, L"");
-
-	/* Initialize the global list used to store the signatures */
-	main_signature_list = signature_list_alloc();
 
 	/* Set this to true so we only parse the database when needed */
 	global_must_read_database = TRUE;
