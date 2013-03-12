@@ -1,6 +1,24 @@
 Copy OllyID.dll userdb.txt into the Plugins directory.
 
 /*******************************************************************************
+ * Version 0.5.1 (11MAR2013)
+ * [*] Fixed bug where OllyID would crash if no module was ever loaded and database was switched
+ * [*] Load database file only if path actually changed
+ *
+ * Version 0.5.0 (25FEB2013)
+ * [+] Added support for OllyDbg 201h
+ * [+] Option: Message box for search result
+ * [+] Option: Verbose program output
+ * [*] Standardized naming of global variables
+ *
+ * Version 0.4.0 (24FEB2013)
+ * [+] Signatures are stored in link list dramatically increasing search speed
+ * [+] Added internal cstrndup function to replace _strdup
+ * [+] Added progress bar during scanning
+ * [*] Parses database file more efficiently
+ * [*] Changed strlen to use Olly's StrlenA function
+ * [*] Major code cleanup
+ *
  * Version 0.3.0 (12NOV2012)
  * [*] Changed the way signatures are searched for another huge speed increase
  * [*] Minor code cleanup

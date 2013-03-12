@@ -1,7 +1,7 @@
 /*******************************************************************************
  * OllyID - OllyID.c
  *
- * Copyright (c) 2012, Austyn Krutsinger
+ * Copyright (c) 2012-2013, Austyn Krutsinger
  * All rights reserved.
  *
  * OllyID is released under the New BSD license (see LICENSE.txt).
@@ -205,19 +205,7 @@ int menu_handler(t_table* pTable, wchar_t* pName, ulong index, int nMode)
 #ifdef DEVELOPMENT_MODE
 		case MENU_TEST_CODE: /* Menu -> Test Code */
 		{
-			struct signature_list_s *s;
-			if (global_must_read_database == TRUE) {
-				main_dictionary = iniparser_load(global_database_path);
-				if (main_dictionary == NULL) {
-					if (global_log_level >= LOG_ERROR)
-						Addtolist(0, DRAW_HILITE, L"[!] Could not initialize database");
-				} else {
-					if (global_log_level >= LOG_INFO)
-						Addtolist(0, DRAW_NORMAL, L"[*] Total signatures: %i", iniparser_getnsec(main_dictionary));
-					s = build_database(main_dictionary);
-					global_must_read_database = FALSE;
-				}
-			}
+			Addtolist(0, DRAW_HILITE, L"database changed: %i", global_must_read_database);
 			break;
 		}
 #endif
@@ -367,6 +355,10 @@ int scan_module(void)
 			main_module_code = module_mem_alloc();
 			global_new_process_loaded = FALSE;
 		}
+
+		/* Initialize the global list used to store the signatures */
+		if (main_signature_list == NULL)
+			main_signature_list = signature_list_alloc();
 
 		/* If the settings have changed we need to free the old signature database */
 		if(global_must_read_database == TRUE) {
@@ -616,8 +608,10 @@ void signature_list_free(struct signature_list_s *list)
 		if (entry->prev != NULL)
 			Memfree((struct sig_entry_s *)entry->prev);
 	}
-	Memfree((struct signature_list_s *)list->head_sentinel);
-	Memfree((struct signature_list_s *)list->tail_sentinel);
+	if (list->head_sentinel != NULL)
+		Memfree((struct signature_list_s *)list->head_sentinel);
+	if (list->tail_sentinel != NULL)
+		Memfree((struct signature_list_s *)list->tail_sentinel);
 	Memfree((struct signature_list_s *)list);
 }
 
@@ -689,9 +683,6 @@ extc int __cdecl ODBG2_Plugininit(void)
 	Addtolist(0, DRAW_NORMAL, L"[*] %s v%s", PLUGIN_NAME, PLUGIN_VERS);
 	Addtolist(0, DRAW_NORMAL, L"[*] Coded by: Austyn Krutsinger <akrutsinger@gmail.com>");
 	Addtolist(0, DRAW_NORMAL, L"");
-
-	/* Initialize the global list used to store the signatures */
-	main_signature_list = signature_list_alloc();
 
 	/* Set this to true so we only parse the database when needed */
 	global_must_read_database = TRUE;
