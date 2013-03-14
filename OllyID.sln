@@ -5,9 +5,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "OllyID", "OllyID\OllyID.vcx
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Debug|Any CPU = Debug|Any CPU
-		Debug|Mixed Platforms = Debug|Mixed Platforms
-		Debug|Win32 = Debug|Win32
 		Development|Any CPU = Development|Any CPU
 		Development|Mixed Platforms = Development|Mixed Platforms
 		Development|Win32 = Development|Win32
@@ -16,11 +13,6 @@ Global
 		Release|Win32 = Release|Win32
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{E6CB2969-F5AB-47B5-8A73-A458F98503EB}.Debug|Any CPU.ActiveCfg = Debug|Win32
-		{E6CB2969-F5AB-47B5-8A73-A458F98503EB}.Debug|Mixed Platforms.ActiveCfg = Debug|Win32
-		{E6CB2969-F5AB-47B5-8A73-A458F98503EB}.Debug|Mixed Platforms.Build.0 = Debug|Win32
-		{E6CB2969-F5AB-47B5-8A73-A458F98503EB}.Debug|Win32.ActiveCfg = Debug|Win32
-		{E6CB2969-F5AB-47B5-8A73-A458F98503EB}.Debug|Win32.Build.0 = Debug|Win32
 		{E6CB2969-F5AB-47B5-8A73-A458F98503EB}.Development|Any CPU.ActiveCfg = Development|Win32
 		{E6CB2969-F5AB-47B5-8A73-A458F98503EB}.Development|Mixed Platforms.ActiveCfg = Development|Win32
 		{E6CB2969-F5AB-47B5-8A73-A458F98503EB}.Development|Mixed Platforms.Build.0 = Development|Win32
