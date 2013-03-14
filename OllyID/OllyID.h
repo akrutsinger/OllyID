@@ -17,11 +17,10 @@
 #define PLUGIN_VERS		L"0.5.1"		/* Plugin version (stable . update . patch  - status) */
 
 /* Menu items */
-#define	MENU_LOG_WINDOW		1
-#define MENU_SETTINGS		2
-#define	MENU_ABOUT			3
-#define	MENU_SCAN_MODULE	4
-#define	MENU_CREATE_SIG		5
+#define MENU_SETTINGS		1
+#define	MENU_ABOUT			2
+#define	MENU_SCAN_MODULE	3
+#define	MENU_CREATE_SIG		4
 #define MENU_TEST_CODE		255
 
 /* Verbosity */
