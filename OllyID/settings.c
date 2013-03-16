@@ -52,6 +52,10 @@ INT_PTR CALLBACK settings_dialog_procedure(HWND hDlg, UINT uMsg, WPARAM wParam, 
 					database_path_changed = TRUE;
 				}
 				return TRUE;
+			case IDC_DATABASE_PATH:
+				if (HIWORD(wParam) == EN_CHANGE)
+					database_path_changed = TRUE;
+				return TRUE;
 		}
 		return TRUE;
 	case WM_DROPFILES:
