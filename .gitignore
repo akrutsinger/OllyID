@@ -1,5 +1,7 @@
 OllyID/Intermediate/
-Build/
+Build/Develop/
+Build/Release/OllyID.lib
+Build/Release/OllyID.exp
 ipch/
 *.ipch
 *.opensdf
