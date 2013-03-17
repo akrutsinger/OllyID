@@ -67,8 +67,8 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Development|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>..\Build\Release\</OutDir>
-    <IntDir>.\Intermediate\Release\</IntDir>
+    <OutDir>..\Build\Develop\</OutDir>
+    <IntDir>.\Intermediate\Develop\</IntDir>
     <TargetName>OllyID</TargetName>
     <GenerateManifest>false</GenerateManifest>
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
@@ -173,7 +173,7 @@
       <AdditionalOptions>/verbose:lib %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <PostBuildEvent>
-      <Command>copy /Y "C:\Users\awk\Desktop\OllyID\Build\Release\OllyID.dll" "C:\Program Files\Crackers Kit\Analysis\OllyDbg v2.01b2\Plugins"</Command>
+      <Command>copy /Y "C:\Users\awk\Desktop\OllyID\Build\Develop\OllyID.dll" "C:\Program Files\Crackers Kit\Analysis\OllyDbg v2.01b2\Plugins"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
