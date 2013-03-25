@@ -17,7 +17,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{E6CB2969-F5AB-47B5-8A73-A458F98503EB}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>OllyPEiD</RootNamespace>
+    <RootNamespace>OllyID</RootNamespace>
     <ProjectName>OllyID</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -53,22 +53,22 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>..\Build\Debug\</OutDir>
-    <IntDir>.\Intermediate\Debug\</IntDir>
+    <OutDir>..\build\debug\</OutDir>
+    <IntDir>.\intermediate\debug\</IntDir>
     <TargetName>OllyID-DebugVersion</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>..\Build\Release\</OutDir>
-    <IntDir>.\Intermediate\Release\</IntDir>
+    <OutDir>..\build\release\</OutDir>
+    <IntDir>.\intermediate\release\</IntDir>
     <TargetName>OllyID</TargetName>
     <GenerateManifest>false</GenerateManifest>
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Development|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>..\Build\Develop\</OutDir>
-    <IntDir>.\Intermediate\Develop\</IntDir>
+    <OutDir>..\build\develop\</OutDir>
+    <IntDir>.\intermediate\develop\</IntDir>
     <TargetName>OllyID</TargetName>
     <GenerateManifest>false</GenerateManifest>
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
@@ -173,13 +173,14 @@
       <AdditionalOptions>/verbose:lib %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <PostBuildEvent>
-      <Command>copy /Y "C:\Users\awk\Desktop\OllyID\Build\Develop\OllyID.dll" "C:\Program Files\Crackers Kit\Analysis\OllyDbg v2.01b2\Plugins"</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="dictionary.h" />
     <ClInclude Include="string.h" />
-    <ClInclude Include="OllyID.h" />
+    <ClInclude Include="ollyid.h" />
     <ClInclude Include="parser.h" />
     <ClInclude Include="plugin.h" />
     <ClInclude Include="resource.h" />
@@ -188,15 +189,15 @@
   <ItemGroup>
     <ClCompile Include="dictionary.c" />
     <ClCompile Include="string.c" />
-    <ClCompile Include="OllyID.c" />
+    <ClCompile Include="ollyid.c" />
     <ClCompile Include="parser.c" />
     <ClCompile Include="settings.c" />
   </ItemGroup>
   <ItemGroup>
-    <Library Include="ollydbg.lib" />
+    <Library Include="..\lib\ollydbg.lib" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="OllyID.rc" />
+    <ResourceCompile Include="ollyid.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

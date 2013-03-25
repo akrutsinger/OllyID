@@ -1,5 +1,5 @@
 /*******************************************************************************
- * OllyID - OllyID.h
+ * OllyID - ollyid.h
  *
  * Copyright (c) 2012-2013, Austyn Krutsinger
  * All rights reserved.

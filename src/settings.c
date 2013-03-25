@@ -14,7 +14,7 @@
 #include <ShellAPI.h>
 
 #include "plugin.h"
-#include "OllyID.h"
+#include "ollyid.h"
 #include "settings.h"
 #include "resource.h"
 

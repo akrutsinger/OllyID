@@ -1,5 +1,5 @@
 /*******************************************************************************
- * OllyID - OllyID.c
+ * OllyID - ollyid.c
  *
  * Copyright (c) 2012-2013, Austyn Krutsinger
  * All rights reserved.
@@ -22,6 +22,10 @@
  * [-] = Removed
  * [*] = Changed
  * [~] = Almost there...
+ *
+ * Version 0.5.1 (11MAR2013)
+ * [*] Fixed bug where OllyID would crash if no module was ever loaded and database was switched
+ * [*] Load database file only if path actually changed
  *
  * Version 0.5.0 (25FEB2013)
  * [+] Added support for OllyDbg 201h
@@ -108,7 +112,7 @@
 #include <time.h>
 
 #include "plugin.h"
-#include "OllyID.h"
+#include "ollyid.h"
 #include "string.h"
 #include "parser.h"
 #include "settings.h"
